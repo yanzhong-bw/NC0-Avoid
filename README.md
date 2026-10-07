@@ -8,7 +8,7 @@ Given a circuit $f:\{0,1\}^n\to\{0,1\}^m$ with $m>n$, range avoidance asks for a
 
 | Manuscript | Author | Version | Files |
 | --- | --- | --- | --- |
-| Logarithm-Free Range Avoidance for Local Circuits | Yan Zhong | September 23, 2026 research draft | [PDF](preprints/logarithm-free-range-avoidance/paper.pdf) · [LaTeX](preprints/logarithm-free-range-avoidance/paper.tex) · [Details](preprints/logarithm-free-range-avoidance/README.md) |
+| Improved Range Avoidance for Local Circuits | Yan Zhong | September 23, 2026 research draft | [PDF](preprints/logarithm-free-range-avoidance/paper.pdf) · [LaTeX](preprints/logarithm-free-range-avoidance/paper.tex) · [Details](preprints/logarithm-free-range-avoidance/README.md) |
 
 The draft claims a deterministic polynomial-time algorithm for every fixed locality $k\ge3$ when
 
