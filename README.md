@@ -1,4 +1,4 @@
-# NC0Avoid
+# NC0-Avoid
 
 AI-assisted research manuscripts on deterministic range avoidance for local Boolean circuits, by Yan Zhong.
 
