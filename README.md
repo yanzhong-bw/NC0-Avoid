@@ -31,3 +31,9 @@ With TeX Live and `latexmk` installed, run `make pdf` from the repository root. 
 See [CONTENTS.md](CONTENTS.md) for the repository index and [VERSION_HISTORY.md](VERSION_HISTORY.md) for release notes. Please report mathematical errors or questions through GitHub issues, with the relevant theorem, equation, or page number.
 
 This repository is inspired by the manuscript-and-source organization of [openai/math](https://github.com/openai/math). It is an independent project and is not affiliated with or endorsed by OpenAI.
+
+## Archived version
+
+The v1.0 release is archived on Zenodo:
+
+[DOI: 10.5281/zenodo.23202316](https://doi.org/10.5281/zenodo.23202316)
