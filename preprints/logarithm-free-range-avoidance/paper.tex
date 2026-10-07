@@ -1,0 +1,3393 @@
+% Standalone source: compile with pdflatex until references stabilize.
+% All sections and the bibliography are embedded.
+\documentclass[letterpaper,11pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amsfonts,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\usepackage{needspace}
+\usepackage{booktabs}
+\usepackage[dvipsnames]{xcolor}
+\definecolor{linkblue}{HTML}{0072BC}
+\definecolor{citegreen}{HTML}{3C7F32}
+\usepackage[colorlinks=true,pdfpagemode=UseNone,urlcolor=linkblue,
+  linkcolor=linkblue,citecolor=citegreen,pdfstartview=FitH,
+  pdftitle={Logarithm-Free Range Avoidance for Local Circuits},
+  pdfauthor={Yan Zhong}]{hyperref}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\setlength{\emergencystretch}{1.5em}
+\setcounter{tocdepth}{2}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{remark}{Remark}
+\newcommand{\F}{\mathbb F}
+\newcommand{\R}{\mathbb R}
+\newcommand{\Q}{\mathbb Q}
+\newcommand{\E}{\mathbb E}
+\newcommand{\U}{\mathbf U}
+\newcommand{\NC}{\mathsf{NC}}
+\newcommand{\FP}{\mathsf{FP}}
+\newcommand{\NP}{\mathsf{NP}}
+\newcommand{\Avoid}{\textnormal{\textsc{Avoid}}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+\newcommand{\abs}[1]{\left|#1\right|}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator{\diag}{diag}
+\DeclareMathOperator{\supp}{supp}
+\DeclareMathOperator{\rank}{rank}
+\DeclareMathOperator{\poly}{poly}
+\DeclareMathOperator{\sgn}{sgn}
+\DeclareMathOperator{\Range}{Range}
+
+\title{Logarithm-Free Range Avoidance for Local Circuits}
+\author{Yan Zhong\thanks{Johns Hopkins University,
+  \texttt{\href{mailto:yanzhong.cs@gmail.com}{yanzhong.cs@gmail.com}}.}}
+\date{September 23, 2026}
+
+\begin{document}
+\hypersetup{pageanchor=false}
+\begin{titlepage}
+\maketitle
+\thispagestyle{empty}
+\begin{abstract}
+The range avoidance problem asks, given a Boolean circuit with more
+outputs than inputs, to find a string outside its range. Guruswami,
+Lyu, and Yuan gave a deterministic polynomial-time algorithm for
+circuits of locality $k\ge3$ when the output length is at least
+$c^k n^{(k-1)/2}\log n$. We remove the logarithmic factor for every
+fixed locality. For each fixed $k\ge3$, there is a constant $C_k$ such
+that range avoidance is solvable in deterministic polynomial time
+whenever $m\ge C_k n^{(k-1)/2}$. The result allows arbitrary local
+predicates, arbitrary input neighborhoods, and repeated neighborhoods.
+In particular, locality three admits a sufficiently large constant
+multiple of linear stretch, and locality four admits stretch
+$C_4n^{3/2}$.
+
+Our main technical result constructs efficiently evaluable certificates
+for cancellation in signed XOR systems with arbitrary supports and
+bounded rational coefficients. At density $M\ge C_{d,\epsilon}n^{d/2}$,
+the certificate dominates the maximum absolute value of the signed
+polynomial for every signing, while its expectation is at most
+$\epsilon M/2$ under every sufficiently small-biased distribution on
+the original signs. This allows all Fourier layers of a local circuit
+to use one common signing.
+
+The proof develops a constructive use of the spectral hypergraph Moore
+argument of Schmidhuber and Hastings. Large trace moments expose a small
+window through deterministic recovery of heavy Fourier coefficients
+of walk matrices. For odd XOR degree, equalizing the total weight of
+each original pair preserves the polynomial-to-matrix identity under
+pair deletion. A failed local capacity condition yields a dense forest
+of pairs, whose edge signs are independent under uniform original
+signs. Removing these forests leaves a remainder with a small trace
+certificate. We also obtain the tradeoff
+$m\ge C_k n(n/\ell)^{(k-3)/2}$ in time
+$\poly(\text{input})(\mathrm e n/\ell)^{O_k(\ell)}$ for
+$1\le\ell\le n$.
+
+The certificates give polynomial-size one-sided distinguishers that
+reject the entire image and accept at least half of uniform strings,
+excluding local demi-bits generators at the same stretch. They also
+give explicit query problems requiring $\Omega_t(m^{2/(t-1)})$ bits
+of storage with $t$ nonadaptive bit probes; three probes require
+linear storage. A separate full-degree argument gives a
+logarithm-free $\Omega_{t,w}(m^{2/t})$ bound for adaptive probes
+to fixed-size words.
+\end{abstract}
+\vfill
+\begin{center}\small Research draft\end{center}
+\end{titlepage}
+\pdfbookmark[1]{Contents}{contents}
+{\small\tableofcontents}
+\thispagestyle{empty}
+\clearpage
+\setcounter{page}{1}
+\hypersetup{pageanchor=true}
+
+\section{Introduction}
+\label{sec:introduction}
+
+Let $f:\{0,1\}^n\to\{0,1\}^m$ be a Boolean circuit with $m>n$.
+The range avoidance problem, denoted by $\Avoid$, asks for a string
+$y\notin\Range(f)$. Such a string exists by counting, but the counting
+argument does not supply a deterministic efficient construction.
+For a fixed integer $k$, the problem $\NC^0_k$-$\Avoid$ restricts
+each output coordinate to depend on at most $k$ input variables.
+The local functions and their input neighborhoods may differ between
+coordinates. We use the explicit local representation: each coordinate
+is specified by its neighborhood and its truth table.
+
+Range avoidance connects explicit constructions, pseudorandomness,
+and circuit lower bounds. Guruswami, Lyu, and Wang~\cite{GLW22}
+developed these connections for low-depth circuits and gave an
+efficient algorithm at locality two. Gajulapalli, Golovnev, Nagargoje,
+and Saraogi~\cite{GGNS23} established both hardness consequences and
+deterministic algorithms for constant locality. Their algorithm applies
+when $m\ge n^{k-1}/\log n$. More recently, Guruswami, Lyu, and
+Yuan~\cite[Theorem~5]{GLY26} obtained a deterministic polynomial-time
+algorithm when
+\begin{equation}
+ m\ge c^k n^{(k-1)/2}\log n.
+ \label{eq:previous-threshold}
+\end{equation}
+Their proof reduces range avoidance to cancellation in signed XOR
+systems and derandomizes the analysis of semirandom XOR
+refutation~\cite{GKM22,HKM23}.
+
+The logarithmic factor in Eqn.~\eqref{eq:previous-threshold} is
+particularly visible at small locality. At locality three it separates
+linear stretch from $n\log n$; at locality four it separates
+$n^{3/2}$ from $n^{3/2}\log n$. We show that this factor can be
+removed for every fixed locality.
+
+\subsection{Our Results}
+
+\begin{theorem}[Range avoidance]
+\label{thm:avoid}
+For every fixed integer $k\ge3$, there is a constant $C_k>0$ and a
+deterministic algorithm with the following guarantee. Given an explicit
+$k$-local map $f:\{0,1\}^n\to\{0,1\}^m$, $n\ge1$, with
+\begin{equation}
+ m\ge C_k n^{(k-1)/2},
+ \label{eq:main-stretch}
+\end{equation}
+the algorithm finds a string outside $\Range(f)$ in time polynomial in
+the input length. The local functions and neighborhoods are arbitrary,
+and repeated neighborhoods are allowed.
+\end{theorem}
+
+The constants and the polynomial running-time exponent may depend on
+$k$. Thus \Cref{thm:avoid} is a fixed-locality result. It gives
+$m\ge C_3n$ at locality three and $m\ge C_4n^{3/2}$ at locality four.
+It does not give polynomial time for every $m>n$. In particular,
+the sufficiently large constant $C_3$ is essential to the statement
+proved here.
+
+The technical result is a signing theorem with an expectation guarantee
+that remains valid under a common pseudorandom distribution. For
+$F\subseteq[n]$ and $x\in\{\pm1\}^n$, write
+$\chi_F(x)=\prod_{v\in F}x_v$.
+
+\begin{theorem}[Certificates for signed XOR systems]
+\label{thm:signing}
+Fix an integer $d\ge2$ and a rational $\epsilon\in(0,1)$.
+There is a constant $C_{d,\epsilon}>0$ with the following property.
+Given $n\ge d$, labeled sets $F_1,\ldots,F_M\in\binom{[n]}d$, and rational
+coefficients $a_i\in[-1,1]$, with
+\begin{equation}
+ M\ge C_{d,\epsilon}n^{d/2},
+ \label{eq:signing-density}
+\end{equation}
+a deterministic algorithm constructs a nonnegative rational-valued
+certificate $\mathcal C:\{\pm1\}^M\to\Q_{\ge0}$ and a rational
+$\eta>0$ such that
+\begin{align}
+ \sup_{x\in\{\pm1\}^n}
+ \abs{\sum_{i=1}^M a_i b_i\chi_{F_i}(x)}
+ &\le\mathcal C(b) &&\text{for every }b,\label{eq:signing-soundness}\\
+ \E_{b\sim\mathcal D}\mathcal C(b)
+ &\le\epsilon M/2
+ &&\text{for every fully $\eta$-biased distribution }\mathcal D.
+ \label{eq:signing-expectation}
+\end{align}
+The construction, certificate evaluation, and $\eta^{-1}$ are polynomial
+in the explicit input size, with constants depending on $d,\epsilon$.
+Labels remain distinct when their supports coincide.
+\end{theorem}
+
+A fully $\eta$-biased distribution is one under which every nonempty
+parity of the sign coordinates has expectation of magnitude at most
+$\eta$. The certificate is constructed before selecting the final
+signing. Its decomposition may use a fixed explicit biased space, but
+Eqn.~\eqref{eq:signing-expectation} holds for every distribution with
+the stated bias. This quantifier permits certificates from several
+systems to be summed before one common signing is selected. The
+statement includes zero coefficients, negative coefficients, and
+arbitrary repetitions.
+
+The level of the matrix construction gives a time--stretch tradeoff.
+Throughout the paper, $\mathrm e$ denotes the base of the natural
+logarithm.
+
+\begin{theorem}[Hierarchy tradeoff]
+\label{thm:hierarchy-avoid}
+For each fixed $k\ge3$, there are constants $C_k,c_k>0$ such that,
+for every integer $1\le\ell\le n$, range avoidance for explicit $k$-local
+maps is solvable deterministically when
+\begin{equation}
+ m\ge C_k n(n/\ell)^{(k-3)/2},
+ \label{eq:hierarchy-stretch}
+\end{equation}
+in time
+\begin{equation}
+ \poly(\text{input})\,(\mathrm e n/\ell)^{c_k\ell}.
+ \label{eq:hierarchy-time}
+\end{equation}
+\end{theorem}
+
+The polynomial in Eqn.~\eqref{eq:hierarchy-time} can be chosen with
+degree depending only on $k$. Taking $\ell$ constant recovers
+\Cref{thm:avoid}; increasing $\ell$ reduces the required output length
+while increasing the running time. At $\ell$ comparable to $n$,
+the algorithm may enumerate all input assignments. No polynomial-time
+claim at nearly minimal stretch follows from this endpoint.
+
+For $k\ge4$, taking a sufficiently large but constant level yields
+any prescribed positive coefficient $\rho n^{(k-1)/2}$ in polynomial
+time, with exponent depending on $\rho$; see \Cref{cor:prefactor}.
+This is a constant-factor consequence, not a reduction of the power
+of $n$. At $k=3$, increasing the level does not change the density.
+
+\paragraph{Cryptographic and data structure consequences.}
+Our proof certifies a large set of nonoutputs, a stronger guarantee
+than producing one missing string. In \Cref{thm:onesided} we construct
+a polynomial-size deterministic test $D_f$ that rejects every image
+point and accepts at least half of uniformly random strings.
+It also accepts at least one third of any distribution with a
+sufficiently small polynomial full bias. The construction is uniform
+in the local description of $f$.
+
+This immediately breaks demi-bits security against $\NP/\poly$
+in the stretch regime of the main theorem. For example, every
+five-local Goldreich generator at $m=\rho n^2$, with fixed $\rho>0$,
+has such a one-sided attack. This does not exclude its smaller-stretch
+instantiations or dense constant-degree polynomial generators.
+We use the demi-bits definition and candidate discussion
+of~\cite{RWZ26}. Li, Ren, and Zhong~\cite{LRZ26} give a
+locality-preserving projection reduction from demi-bits to hard
+range-avoidance instances. Applying their projection mechanism to
+our algorithm yields polynomial-size nondeterministic certificates
+for a $1-2^{-\Omega(m)}$ fraction of candidate outputs, after a
+constant-factor increase in output length
+(\Cref{cor:projection-proofs}). This amplification concerns
+certificate existence under uniform candidate outputs; the
+deterministic, small-bias guarantee above is proved separately.
+
+The small-bias guarantee supplies an explicit universal family of
+candidate nonoutputs. Applying the cell-probe connection
+of~\cite{KPI25,GLY26}, we obtain the following.
+
+\begin{theorem}[Data structure consequences]\label{thm:ds-intro}
+For every fixed $t\ge3$, there is an explicit Boolean query problem
+with $m^{O_t(1)}$ rows and $m$ queries for which every exact
+nonadaptive $t$-bit-probe representation uses
+$\Omega_t(m^{2/(t-1)})$ bits of storage. In particular, three
+nonadaptive probes require $\Omega(m)$ bits.
+For every fixed $t\ge2$ and word size $w\ge1$, there is an explicit
+query problem requiring $\Omega_{t,w}(m^{2/t})$ cells for adaptive
+$t$-probe representations with $w$-bit words.
+The latter bound also allows per-row relative Hamming error $1/4$.
+The entries of both query problems are computable in time polynomial
+in $\log m$.
+\end{theorem}
+
+The nonadaptive bound removes the logarithmic loss in the
+corresponding GLY reduction, at the cost of requiring a sufficiently
+small polynomial bias whose exponent is not optimized. The adaptive
+word bound keeps $w$ fixed. For one-bit words, more specialized
+adaptive arguments in~\cite{GLY26} achieve stronger powers than
+$2/t$; we do not claim to improve those powers here.
+
+\subsection{Relation to Previous Work}
+
+Our range-avoidance reduction follows Guruswami, Lyu, and
+Yuan~\cite[Section~6.1]{GLY26}. The change lies in the
+certificate construction for arbitrary-support signed XOR systems.
+The relevant deterministic thresholds are summarized below; locality
+is fixed and constants may depend on it.
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Result & Locality & Sufficient output length\\
+\midrule
+Gajulapalli et al.~\cite{GGNS23} & $k\ge3$ & $n^{k-1}/\log n$\\
+Guruswami--Lyu--Yuan~\cite{GLY26} & $k\ge3$ & $c^k n^{(k-1)/2}\log n$\\
+\Cref{thm:avoid} & fixed $k\ge3$ & $C_k n^{(k-1)/2}$\\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The matrix argument builds on the Kikuchi approach to semirandom
+refutation and hypergraph Moore bounds~\cite{GKM22,HKM23}.
+Recent proofs of the sharp hypergraph Moore bound were given by
+Bandeira et al.~\cite[Theorem~1.2, version~2]{BKNPW26} and
+Schmidhuber and Hastings;
+we use the spectral construction of the latter work. The second
+version of Bandeira et al. covers odd as well as even uniformity.
+Schmidhuber and Hastings~\cite{SH26Moore} prove a sharp hypergraph
+Moore bound through a normalized matrix and a lift recording the
+hyperedges used an odd number of times. Their odd-uniformity argument
+introduces balanced transitions and reciprocal-excess weights on four
+row--label incidences. We use these constructions, with their roles
+specified in the proofs below.
+
+An even cover is a binary linear dependence among hyperedges. Its
+existence alone does not give the strong-cancellation certificate in
+\Cref{thm:signing}. The present argument instead uses a local capacity
+condition to bound the lifted operator, and a failed trace test to
+find a window where that condition fails. A separate companion paper
+of Schmidhuber and Hastings~\cite{SH26Kikuchi} gives sharp
+Kikuchi-hierarchy guarantees for random XOR instances. Our supports
+are fixed adversarially; the signs are the variables over which the
+certificate is averaged. We prove the required arbitrary-support
+statement directly.
+
+\subsection{Proof Overview}
+
+We describe the main steps for a degree-$d$ polynomial
+$P(b,x)=\sum_i a_i b_i\chi_{F_i}(x)$. The signs $b_i$ always belong
+to original labels.
+
+\paragraph{A local spectral condition.}
+For even $d$, represent each clause on a slice of the Boolean cube
+and normalize the resulting adjacency matrix using
+$\Gamma=\diag(\text{row degrees})+\bar d I$. A lifted state
+consists of a row and a parity memory of original labels. Uniform
+sign averaging retains precisely the walks whose final memory is
+empty. If each small window admits fractional representatives with
+capacity $D$ per input variable, an orientation of the lifted edges
+has incoming weight at most $(D+1)\ell$. This bounds the normalized
+lifted operator by $2\sqrt{(D+1)\ell/\bar d}$.
+
+\paragraph{Finding a failed window.}
+Enumerating all logarithmic-size windows would take quasipolynomial
+time. We instead inspect the averaged trace. If it is large, a
+nonnegligible mass of empty-memory closed walks must visit a bad
+window. Some such state has inverse-polynomial forward mass. Entries
+of the signed walk matrix have nonnegative Fourier coefficients:
+the coefficient of a memory is exactly the mass of paths reaching
+that memory. A deterministic prefix search recovers the heavy
+coefficients using a small-biased space. This finds a bad window
+without constructing the full parity lift. At even degree, a failed
+capacity matching gives a dense block supported on that window;
+its contribution can be certified by enumerating the window's input
+assignments.
+
+\paragraph{Pairs with a common total weight.}
+For odd $d$, group original clauses into equal-size bundles sharing
+a center, and remove the center by one Cauchy--Schwarz inequality.
+This produces pair terms with coefficients $a_i a_j b_i b_j$.
+The spectral Moore construction gives port loads at most one, but
+arbitrary instance weights would distort the pair polynomial.
+A per-pair contention estimate allows all instances of a pair to
+be scaled to one common total weight $\beta$. The exact
+polynomial-to-matrix identity then survives deletion of whole pairs.
+
+\paragraph{A failed capacity condition yields a forest.}
+After pair deletion the remaining pair graph need not be a union of
+cliques. We use a fractional cover condition on this graph, with
+capacities on residual input variables. Its failure gives a dual
+weighting. A forest-polytope argument and threshold integration turn
+that weighting into a forest containing more than $D$ times as many
+edges as residual variables. On a forest, the products $b_i b_j$
+are independent uniform signs under uniform original signs.
+The forest therefore has a small expected local certificate.
+Only its pairs are deleted. The original bundle normalization and
+diagonal term are retained throughout the iteration.
+
+\paragraph{One certificate and one signing.}
+The procedure stops when the remaining degree is small or the
+averaged trace is small. Rational tangent-line bounds turn forest
+moments and trace moments into pointwise certificates. Their Fourier
+coefficient masses are polynomially bounded, so their expectation
+bounds transfer to every sufficiently small-biased distribution.
+We add these expectations before selecting a sign vector. This
+avoids any need for independence between different forests or
+between the Fourier layers of the circuit.
+
+\subsection{Organization of the Paper}
+\Cref{sec:preliminaries} gives the notation, pseudorandomness tools,
+and weighted orientation inequality.
+\Cref{sec:extraction} proves deterministic extraction of a bad memory
+state. \Cref{sec:even} gives the even-degree certificate.
+\Cref{sec:forests} proves the local-capacity alternative and its
+forest certificate. \Cref{sec:odd} completes the odd-degree proof.
+\Cref{sec:avoidance} assembles the signing theorem and proves the
+range-avoidance algorithm. \Cref{sec:hierarchy} proves the hierarchy
+tradeoff and its boundary cases.
+\Cref{sec:applications} proves the one-sided tests, demi-bits
+consequences, and data structure lower bounds.
+\Cref{sec:moore-applications} explains what short even covers provide
+directly and what additional construction is required.
+
+
+% Begin preliminaries
+\section{Preliminaries}
+\label{sec:preliminaries}
+
+\subsection{Local Maps, Signed Systems, and Computation}
+Write $[n]=\{1,\ldots,n\}$ and identify a Boolean bit $u$ with
+$(-1)^u\in\{\pm1\}$. For $F\subseteq[n]$, set
+$\chi_F(x)=\prod_{v\in F}x_v$, with $\chi_\varnothing=1$.
+Degree in this paper means the degree of the real multilinear Fourier
+expansion on the sign cube. It is distinct from polynomial degree
+over $\F_2$. A labeled degree-$d$ system is a list
+$F_1,\ldots,F_M\in\binom{[n]}d$ with rational coefficients
+$a_i\in[-1,1]$. The associated polynomial is
+\[
+ P(b,x)=\sum_{i=1}^M a_i b_i\chi_{F_i}(x),
+ \qquad b\in\{\pm1\}^M,\quad x\in\{\pm1\}^n.
+\]
+The labels $i$ are distinct even when the sets $F_i$ coincide.
+All sign memories and pseudorandom distributions refer to these labels.
+
+A certificate for $P$ is an explicitly represented function
+$\mathcal C:\{\pm1\}^M\to\Q_{\ge0}$ satisfying
+$\sup_x|P(b,x)|\le\mathcal C(b)$ for every $b$.
+The representation consists of rational matrices, local polynomials,
+and a specified evaluation procedure. Polynomial-time construction
+includes the size of this representation and the time to evaluate it.
+We use the usual bit model, with rational numbers encoded by signed
+integer numerators and positive denominators. The accuracy parameter
+and the locality are fixed unless a parameterized statement explicitly
+says otherwise. We may delete unused input variables, so polynomial
+dependence on $n$ is harmless for the explicit representation.
+
+\subsection{Small Bias and Moment Certificates}
+For $\mu\in\F_2^M$, write
+$\chi_\mu(b)=\prod_{i:\mu_i=1}b_i$.
+
+\begin{definition}
+A distribution $\mathcal D$ on $\{\pm1\}^M$ is
+\emph{fully $\eta$-biased} if
+$|\E_{b\sim\mathcal D}\chi_\mu(b)|\le\eta$ for every nonzero
+$\mu\in\F_2^M$.
+\end{definition}
+
+Restrictions of a fully $\eta$-biased distribution to a subset of
+coordinates remain fully $\eta$-biased. We use the following elementary
+finite-field construction; small-biased spaces were developed
+in~\cite{NN93,AGHP92}.
+
+\begin{lemma}[Explicit small-biased spaces]
+\label{lem:small-bias}
+For every integer $h\ge1$ and rational $\eta\in(0,1)$, a fully
+$\eta$-biased distribution on $h$ signs can be enumerated
+deterministically in time polynomial in the input length and
+$\eta^{-1}$. Its sample
+space, counted with multiplicity, has size $O((h/\eta)^2)$ and all
+averages of rational-valued functions are rational and can be computed
+exactly by enumeration.
+\end{lemma}
+\begin{proof}
+Choose a power of two $Q$ with
+$\max\{2,h/\eta\}\le Q<2\max\{2,h/\eta\}$, and work over
+$\F_Q$. Enumerate all $(a,z)\in\F_Q^2$ and output
+\[
+ b_j=(-1)^{\operatorname{Tr}_{\F_Q/\F_2}(az^{j-1})},
+ \qquad 1\le j\le h.
+\]
+For a nonempty set $J\subseteq[h]$, averaging its character first
+over $a$ gives the indicator that
+$\sum_{j\in J}z^{j-1}=0$. This is a nonzero polynomial of degree
+at most $h-1$, so the character expectation is at most
+$(h-1)/Q\le\eta$. A representation of $\F_Q$ can be found by
+enumerating monic degree-$\log_2Q$ binary polynomials and testing
+irreducibility. Even a direct enumeration and trial-factor test is
+polynomial in $Q$, which suffices here.
+\end{proof}
+
+\begin{lemma}[Bias transfer]
+\label{lem:bias-transfer}
+Let $H(b)=\sum_\mu c_\mu\chi_\mu(b)$ and set
+$\|\widehat H\|_1=\sum_\mu|c_\mu|$. For every fully
+$\eta$-biased distribution $\mathcal D$,
+\begin{equation}
+ \abs{\E_{\mathcal D}H-\E_{\U_M}H}
+ \le\eta\|\widehat H\|_1.
+ \label{eq:bias-transfer}
+\end{equation}
+\end{lemma}
+\begin{proof}
+The constant Fourier term has the same expectation under both
+distributions. Bound each nonconstant character expectation by
+$\eta$ and apply the triangle inequality.
+\end{proof}
+
+\begin{lemma}[Even moments]
+\label{lem:moment}
+Let $\xi_1,\ldots,\xi_t$ be independent uniform signs and let
+$c_1,\ldots,c_t\in\R$. For every integer $r\ge1$,
+\begin{equation}
+ \E\left(\sum_{i=1}^t c_i\xi_i\right)^{2r}
+ \le(2r-1)!!\left(\sum_i c_i^2\right)^r
+ \le\left(2r\sum_i c_i^2\right)^r.
+ \label{eq:even-moment}
+\end{equation}
+\end{lemma}
+\begin{proof}
+Expand the power. Only words in which each index occurs evenly
+survive expectation, and their coefficient products are nonnegative.
+Every such word admits a pairing of equal indices. Summing over all
+$(2r-1)!!$ pairings overcounts the surviving words and yields the
+first bound. The second follows from $(2r-1)!!\le(2r)^r$.
+\end{proof}
+
+For an integer $p\ge1$ and $z\ge0$, define
+\begin{equation}
+ R_p(z):=\frac{p-1+z}{p}\ge z^{1/p}.
+ \label{eq:young-envelope}
+\end{equation}
+This is the tangent-line bound for the concave function $z^{1/p}$
+at $z=1$. We also use, for $e>0$,
+\begin{equation}
+ \sqrt z\le\frac e2+\frac{z}{2e}.
+ \label{eq:sqrt-envelope}
+\end{equation}
+Both right sides are rational for rational arguments.
+
+\begin{lemma}[Scalar certificates]
+\label{lem:scalar}
+Fix rational $e\in(0,1)$. Let
+$P(b,x)=\sum_{i=1}^M a_ib_i\chi_{F_i}(x)$ use at most $u$ input
+variables, with $|a_i|\le1$. If
+$M\ge16e^{-2}(u+1)$, put
+\[
+ p=2(u+1),\qquad
+ \Phi(b)=\sum_{x\in\{\pm1\}^u}
+          \left(\frac{P(b,x)}{eM}\right)^p,
+ \qquad C(b)=eM R_p(\Phi(b)).
+\]
+Then $C(b)\ge\sup_x|P(b,x)|$ for every $b$. For every fully
+$\eta$-biased distribution with
+$\eta\le e^{2(u+1)}/(8\cdot2^u)$, one has $\E C\le eM$.
+Evaluation takes time polynomial in the input and $2^u$.
+\end{lemma}
+\begin{proof}
+Maximum-versus-sum and Eqn.~\eqref{eq:young-envelope} prove
+pointwise soundness. By \Cref{lem:moment},
+\[
+ \E_{\U_M}\Phi
+ \le2^u\left(\frac{2(u+1)}{e^2M}\right)^{u+1}
+ \le2^u8^{-(u+1)}\le\frac18.
+\]
+Expanding the moment in the original signs gives
+$\|\widehat\Phi\|_1\le2^u e^{-2(u+1)}$; reducing powers
+modulo two can only decrease this upper bound. \Cref{lem:bias-transfer}
+therefore gives $\E\Phi\le1/4$, and hence $\E C\le eM$.
+All powers and sums are rational of polynomial bit length.
+\end{proof}
+
+\subsection{Weighted Matrices and Parity Lifts}
+An undirected multigraph may have parallel edges with different
+labels. Each undirected edge contributes to both symmetric adjacency
+entries. Suppose its edge weights are nonnegative and its adjacency
+matrix is $A_+$. Write $N$ for its number of vertices, $d(S)$ for
+the weighted row degree, and
+\[
+ \bar d=N^{-1}\sum_Sd(S),\qquad
+ \Gamma=\diag(d(S))+\bar d I.
+\]
+When $\bar d>0$, set
+$K_+=\Gamma^{-1/2}A_+\Gamma^{-1/2}$ and
+$P_+=\Gamma^{-1}A_+$. The matrix $P_+$ is substochastic, since
+its row sums are $d(S)/(d(S)+\bar d)\le1$. It is similar to
+$K_+$, so $\|K_+\|\le1$.
+
+Give each edge $f$ a memory increment $h_f\in\F_2^M$.
+Its signed weight is its unsigned weight multiplied by
+$\chi_{h_f}(b)$. The parity lift has states $(S,\mu)$ and replaces
+an edge $S\leftrightarrow S'$ by
+$(S,\mu)\leftrightarrow(S',\mu+h_f)$. Memories are restricted
+when a proof requires a finite truncated lift. Its edges inherit the
+normalization from the base rows, rather than using its own degrees.
+
+\begin{lemma}[Weighted orientation bound]
+\label{lem:orientation}
+Let $\mathcal L$ be the symmetric normalized adjacency operator of
+any finite subgraph of such a lift. If its unnormalized edge weights
+admit a fractional orientation with incoming weight at most $\kappa$
+at every state, then
+\begin{equation}
+ \|\mathcal L\|\le2\sqrt{\kappa/\bar d}.
+ \label{eq:orientation}
+\end{equation}
+A fractional orientation splits an edge into nonnegative pieces and
+orients each piece independently.
+\end{lemma}
+\begin{proof}
+This is the weighted orientation argument of
+Schmidhuber--Hastings~\cite[Lemma~2.5]{SH26Moore}; we include it to
+specify the normalization. Taking absolute values can only increase
+the absolute quadratic form, so consider a nonnegative unit vector
+$f$. An oriented piece $y\to x$ of weight $w$ contributes
+$2wf(x)f(y)/\sqrt{\Gamma_x\Gamma_y}$. For any $t>0$, this is at most
+\[
+ w\left(t\frac{f(x)^2}{\Gamma_x}
+         +t^{-1}\frac{f(y)^2}{\Gamma_y}\right).
+\]
+The total incoming weight is at most $\kappa$ and
+$\Gamma_x\ge\bar d$. The outgoing weight at $y$ is at most its
+base-row degree, which is at most $\Gamma_y$. Summing gives
+$\langle f,\mathcal Lf\rangle\le t\kappa/\bar d+t^{-1}$.
+Minimization over $t$ proves the bound. For $\kappa=0$ there are
+no positive-weight edges and the conclusion is immediate.
+\end{proof}
+
+\begin{lemma}[Trace coefficient mass]
+\label{lem:trace-mass}
+Let $A_b$ be obtained from $A_+$ by multiplying each edge weight by
+a sign character and a fixed real number of magnitude at most one.
+Set $K_b=\Gamma^{-1/2}A_b\Gamma^{-1/2}$. For every integer $s\ge1$,
+\begin{equation}
+ \left\|\widehat{\tr(K_b^{2s})}\right\|_1\le N,
+ \qquad
+ \tr(K_b^{2s})\ge\|K_b\|^{2s}\ge0.
+ \label{eq:trace-mass}
+\end{equation}
+Moreover, for rational data,
+$\tr(K_b^{2s})=\tr((\Gamma^{-1}A_b)^{2s})$ is rational and can
+be evaluated without computing matrix square roots.
+\end{lemma}
+\begin{proof}
+Expand the trace into labeled closed walks and take absolute values
+before collecting Fourier characters. Their total is at most
+$\tr(K_+^{2s})\le N\|K_+\|^{2s}\le N$.
+The second assertion follows from symmetry and the even power.
+The rational identity follows by similarity.
+\end{proof}
+
+If a one-label move toggles a single original sign, an empty-memory
+closed walk of length $2s$ has at most $s$ active labels at any
+prefix. If each move toggles two labels, the corresponding bound is
+$2s$: at time $j$ the memory size is at most both $2j$ and
+$2(2s-j)$. These bounds concern closed walks with empty final memory;
+arbitrary walk prefixes need not satisfy them.
+
+% End preliminaries
+
+
+% Begin extraction
+\section{Deterministic Extraction of a Bad Memory State}
+\label{sec:extraction}
+
+The trace arguments used later in the paper identify a collection of
+closed walks that pass through an obstructed state.  The underlying graph
+has polynomially many vertices, but a state also records the parity of the
+original labels encountered along the walk.  Enumerating all such memories
+would be too expensive.  We show that a lower bound on the total weight of
+the obstructed walks allows us to recover a suitable memory deterministically.
+The argument uses nonnegative Fourier coefficients and applies to directed
+graphs, without a reversibility assumption.
+
+\subsection{Graphs with parity memory}
+
+Let $G$ be a directed multigraph with vertex set $V$, where $|V|=N$.
+Each edge $e$ has a nonnegative rational weight $w_e$ and an increment
+$h_e\in\F_2^M$.  Loops and parallel edges are allowed, and parallel edges
+retain their individual increments.  The graph is given explicitly; the
+same statements apply when its edges can be enumerated in polynomial time.
+Fix positive rational numbers $\gamma_v$, $v\in V$, satisfying
+\begin{equation}
+  \gamma_v\geq\sum_{e:\,\mathrm{tail}(e)=v}w_e.
+  \label{ex:normalization}
+\end{equation}
+For $b\in\{\pm1\}^M$ and $\mu\in\F_2^M$, write
+$\chi_\mu(b)=\prod_{i=1}^M b_i^{\mu_i}$.  Define the matrices
+\begin{equation}
+  A_b[v,w]=\sum_{e:\,v\to w}w_e\chi_{h_e}(b),
+  \qquad
+  P_b=\Gamma^{-1}A_b,
+  \qquad
+  \Gamma=\diag(\gamma_v:v\in V).
+  \label{ex:signed-transition}
+\end{equation}
+We use the subscript $+$ for evaluation at the all-positive sign vector.
+Thus $P_+$ is entrywise nonnegative and has row sums at most one.
+
+The \emph{parity lift} has states $(v,\mu)\in V\times\F_2^M$.
+An edge $e:v\to w$ gives, for every $\mu$, a transition
+\[
+  (v,\mu)\longrightarrow(w,\mu+h_e)
+  \quad\text{of weight }w_e/\gamma_v.
+\]
+The weight of a lifted walk is the product of its transition weights.
+We do not construct the parity lift explicitly.
+
+Fix a length $T=2s$ and a predicate $\operatorname{Bad}(v,\mu)$ that can
+be evaluated in polynomial time on an explicit state.  A closed
+empty-memory walk starts at $(u,0)$ and returns to $(u,0)$ after $T$ steps.
+Let $\Delta_{\mathrm{bad}}$ denote the total weight of such walks that
+visit a bad state at some time in $\{0,\ldots,T\}$, summed over all
+$u\in V$.  A walk that visits several bad states is counted only once
+in this definition.  Substochasticity gives
+$0\leq\Delta_{\mathrm{bad}}\leq N$.
+
+\begin{theorem}[Deterministic memory extraction]
+\label{thm:extraction}
+In the setting above, suppose that a rational number $\delta>0$ satisfies
+$\Delta_{\mathrm{bad}}\geq\delta$.  There is a deterministic algorithm
+that finds a bad state reachable by a positive-weight lifted walk of
+length at most $T$ from some empty-memory state.  Its bit complexity is
+polynomial in the input description length, the predicate evaluation
+time, $T$, $M$, and $1/\delta$.
+
+More precisely, set
+\begin{equation}
+  \tau=\frac{\delta}{2N(T+1)}.
+  \label{ex:threshold}
+\end{equation}
+The algorithm can enumerate a polynomial-size list containing a bad
+state $(v,\mu)$ for which the total weight of $j$-step walks from
+$(u,0)$ to $(v,\mu)$ is at least $\tau$, for some $u\in V$ and
+$0\leq j\leq T$.
+\end{theorem}
+
+The final list may also contain states whose corresponding forward weight
+lies between $\tau/2$ and $\tau$.  Every listed state is reachable by a
+positive-weight walk.  This distinction is useful when an application
+retains only states satisfying an additional restriction on their memories.
+
+\subsection{Recovering nonnegative Fourier coefficients}
+
+We first give the enumeration procedure that will be applied to entries
+of powers of $P_b$.  The procedure requires exact evaluation of a function,
+but does not require its Fourier expansion as input.
+
+\begin{lemma}[Positive Fourier enumeration]
+\label{lem:heavy-fourier}
+Let $F:\{\pm1\}^M\to\mathbb{Q}$ have an expansion
+\begin{equation}
+  F(b)=\sum_{\mu\in\F_2^M}c_\mu\chi_\mu(b),
+  \qquad c_\mu\geq0,
+  \qquad\sum_\mu c_\mu\leq1.
+  \label{ex:positive-fourier}
+\end{equation}
+Given an exact evaluation algorithm for $F$ and a rational
+$0<\tau\leq1$, one can deterministically produce a list containing
+every $\mu$ with $c_\mu\geq\tau$, and containing only $\mu$ with
+$c_\mu\geq\tau/2$.  The list has size at most $2/\tau$.
+The algorithm uses $\poly(M,1/\tau)$ evaluations of $F$ and polynomially
+many additional bit operations in these parameters and the bit lengths
+of $\tau$ and the evaluation outputs.
+\end{lemma}
+
+\begin{proof}
+For a prefix $p\in\F_2^h$, define its coefficient mass by
+\[
+  C(p)=\sum_{\mu:\,\mu_{[h]}=p}c_\mu.
+\]
+We estimate $C(p)$ by assigning the first $h$ signs from a small-biased
+space and fixing all remaining signs to $+1$.  In this recovery procedure
+we use the separate bias parameter
+\begin{equation}
+  \eta_{\mathrm{rec}}=\tau/4.
+  \label{ex:recovery-bias}
+\end{equation}
+Let $\mathcal{Q}_h$ be the explicit $\eta_{\mathrm{rec}}$-biased
+distribution on $h$ signs supplied by \Cref{lem:small-bias}.  Set
+\begin{equation}
+  \widehat C(p)=
+  \E_{z\sim\mathcal{Q}_h}
+    \bigl[\chi_p(z)F(z,1,\ldots,1)\bigr].
+  \label{ex:prefix-oracle}
+\end{equation}
+This expectation is computed exactly by enumerating the sample space.
+Indeed, substituting Eqn.~\eqref{ex:positive-fourier} into
+Eqn.~\eqref{ex:prefix-oracle} gives
+\[
+  \widehat C(p)=
+  \sum_\mu c_\mu
+    \E_{z\sim\mathcal{Q}_h}\chi_{p+\mu_{[h]}}(z).
+\]
+The summands with $\mu_{[h]}=p$ contribute exactly $C(p)$.
+Every other character has expectation of absolute value at most
+$\eta_{\mathrm{rec}}$.  Consequently,
+\begin{equation}
+  \abs{\widehat C(p)-C(p)}
+    \leq\eta_{\mathrm{rec}}\sum_\mu c_\mu
+    \leq\tau/4.
+  \label{ex:prefix-error}
+\end{equation}
+This is also an instance of \Cref{lem:bias-transfer}.
+
+Starting with the empty prefix, extend every retained prefix by both
+possible bits at the next coordinate.  Retain an extension $p$ if
+\begin{equation}
+  \widehat C(p)\geq3\tau/4.
+  \label{ex:prefix-test}
+\end{equation}
+If $c_\mu\geq\tau$, then every prefix of $\mu$ has mass at least
+$\tau$, so Eqn.~\eqref{ex:prefix-error} ensures that all these prefixes
+are retained.  Conversely, any retained prefix has mass at least
+$\tau/2$.  Prefix masses at a fixed depth concern disjoint sets of
+coefficients and sum to at most one.  Thus at most $2/\tau$ prefixes
+are retained at each depth.  At depth $M$, a prefix specifies an
+individual coefficient, proving both guarantees on the output list.
+
+There are $M$ depths and at most $4/\tau$ oracle calls at each depth.
+Each oracle call enumerates a space of size
+$\poly(M,1/\eta_{\mathrm{rec}})=\poly(M,1/\tau)$.
+All comparison thresholds are rational, and the expectations are exact
+rational averages.  The claimed complexity follows.
+\end{proof}
+
+Fixing the suffix coordinates to $+1$ in
+Eqn.~\eqref{ex:prefix-oracle} is essential to this proof: it makes the
+oracle estimate the sum of all nonnegative coefficients extending a
+prefix.  No individual coefficient needs to be identified before its
+entire index has been specified.
+
+\subsection{Forward and suffix masses}
+
+For $u,v\in V$ and $0\leq j\leq T$, consider the efficiently
+evaluable function
+\[
+  F_{u,v,j}(b)=(P_b^j)[u,v].
+\]
+Expanding matrix multiplication and reducing characters using
+$\chi_\mu\chi_\nu=\chi_{\mu+\nu}$ yields
+\begin{equation}
+  F_{u,v,j}(b)=
+  \sum_{\mu\in\F_2^M}c_{u,v,j}(\mu)\chi_\mu(b).
+  \label{ex:path-fourier}
+\end{equation}
+Here $c_{u,v,j}(\mu)$ is exactly the total weight of $j$-step lifted
+walks from $(u,0)$ to $(v,\mu)$.  In particular, these Fourier
+coefficients are nonnegative.  Moreover,
+\begin{equation}
+  \sum_\mu c_{u,v,j}(\mu)=(P_+^j)[u,v],
+  \qquad
+  \sum_{v,\mu}c_{u,v,j}(\mu)\leq1.
+  \label{ex:path-mass}
+\end{equation}
+Thus \Cref{lem:heavy-fourier} applies to every $F_{u,v,j}$.
+
+The following argument explains why at least one recoverable coefficient
+describes a bad state.  Translation invariance of the memory coordinate
+implies that the total weight of $r$-step walks from $(v,\mu)$ to
+$(u,0)$ equals $c_{v,u,r}(\mu)$: in both cases the required memory
+increment is $\mu$.  This identity does not reverse the direction of
+any edge.  It follows that the total weight of closed empty-memory
+$T$-step walks starting at $(u,0)$ and passing through $(v,\mu)$
+at time $j$ is
+\begin{equation}
+  c_{u,v,j}(\mu)c_{v,u,T-j}(\mu).
+  \label{ex:prefix-suffix}
+\end{equation}
+
+For a fixed time $j$, call a visit \emph{light} relative to its starting
+vertex $u$ if $c_{u,v,j}(\mu)<\tau$.  Summing
+Eqn.~\eqref{ex:prefix-suffix} over all light visits gives
+\begin{align}
+ &\sum_{u\in V}
+   \sum_{\substack{v\in V,\,\mu\in\F_2^M\\
+                    c_{u,v,j}(\mu)<\tau}}
+       c_{u,v,j}(\mu)c_{v,u,T-j}(\mu)
+       \notag\\
+ &\hspace{20mm}\leq
+       \tau\sum_{v\in V}\sum_{u\in V,\,\mu\in\F_2^M}
+          c_{v,u,T-j}(\mu)
+       \leq N\tau.
+  \label{ex:light-mass}
+\end{align}
+The last inequality is the row-sum bound in
+Eqn.~\eqref{ex:path-mass}, applied with $v$ as the starting vertex
+of the suffix.  In particular, no estimate on a column sum or on the
+ratios $\gamma_u/\gamma_v$ is needed.
+
+\begin{proof}[Proof of \Cref{thm:extraction}]
+Consider the bad closed walks for which every bad visit is light.
+Each such walk has at least one light bad visit.  Summing
+Eqn.~\eqref{ex:light-mass} over the $T+1$ possible visit times
+therefore bounds their total weight by
+\[
+  N(T+1)\tau=\delta/2.
+\]
+Since $\Delta_{\mathrm{bad}}\geq\delta$, there exists a bad
+visit $(v,\mu)$ at a time $j$ on a closed walk starting at $(u,0)$
+such that $c_{u,v,j}(\mu)\geq\tau$.
+
+Apply \Cref{lem:heavy-fourier}, with the threshold in
+Eqn.~\eqref{ex:threshold}, to each of the $N^2(T+1)$ functions
+$F_{u,v,j}$.  Retain the indices $u,j$ along with each recovered
+memory $\mu$ and endpoint $v$, and evaluate
+$\operatorname{Bad}(v,\mu)$ on the resulting list.  The bad visit
+just established appears in the list, so at least one test succeeds.
+Every listed coefficient is at least $\tau/2>0$ and therefore
+corresponds to a reachable state.
+
+For completeness, all evaluations and comparisons admit polynomial
+bit complexity.  Constructing $P_b$ uses the explicitly given rational
+edge weights and normalizers.  A common denominator for its entries
+has bit length polynomial in the graph description.  Powers up to
+$T$ have denominators dividing the $T$-th power of such a denominator,
+and their numerators also have polynomial bit length.  They can be
+computed by exact rational matrix multiplication.  The prefix oracles
+use polynomially many evaluations and exact finite averages; their
+bit lengths remain polynomial in the stated parameters.  Finally,
+$1/\tau=2N(T+1)/\delta$, so the enumeration complexity in
+\Cref{lem:heavy-fourier} has the required dependence.
+\end{proof}
+
+\subsection{Truncation in the applications}
+
+The preceding theorem allows arbitrary increments.  In our applications,
+each increment toggles either one original label or a pair of distinct
+original labels.  The following observation permits recovery to be
+followed by a memory-size filter.
+
+Suppose every increment has Hamming weight at most $a$, and consider a
+closed empty-memory walk of length $T=2s$.  If its memory after $j$
+steps is $\mu_j$, then both its prefix and its suffix bound that
+memory:
+\begin{equation}
+  \abs{\supp(\mu_j)}
+     \leq\min\{aj,a(T-j)\}
+     \leq as.
+  \label{ex:memory-filter}
+\end{equation}
+Consequently, the heavy bad visit supplied by the proof of
+\Cref{thm:extraction} survives a filter discarding all memories
+larger than $as$.  The fact that other recovered states need not lie
+on a closed walk causes no difficulty.
+
+For the paired construction, $a=2$.  A state consists of an
+$\ell$-subset $S$ of the input variables and a memory $\mu$ of
+original labels.  If each label has a residual set $R_i$ of size at
+most $d$, its associated window is
+\[
+  U(S,\mu)=S\cup\bigcup_{i\in\supp(\mu)}R_i.
+\]
+After the filter in Eqn.~\eqref{ex:memory-filter}, this window has
+size at most $\ell+2ds$.  Hence a polynomial-time feasibility test
+on an explicit window can serve as the bad-state predicate, even
+though enumerating all windows of this size would not generally
+take polynomial time.  When $N$ is polynomial in the input length,
+$s=O(\log N)$, and $\delta^{-1}$ is polynomial, the entire
+extraction procedure has polynomial bit complexity.
+
+% End extraction
+
+
+% Begin even
+\section{Certificates for Even-Degree XOR}\label{sec:even}
+
+We first construct certificates for even-degree polynomials. The proof
+combines the normalized parity lift of the spectral Moore argument
+with a decomposition into small dense windows. The orientation argument
+is adapted from Schmidhuber and Hastings~\cite[Lemmas~2.5--2.7]{SH26Moore};
+the decomposition removes its local sparsity hypothesis. All random
+characters below are characters of the original clause labels, including
+when several labels have identical scopes.
+
+\begin{theorem}\label{thm:even-weight}
+Fix an even integer $d\geq2$ and a rational $0<\epsilon<1$.
+Let $F_1,\ldots,F_M$ be labeled $d$-subsets of $[n]$, where $n\geq d$,
+and let $a_1,\ldots,a_M$ be rational numbers with $\abs{a_i}\leq1$.
+Write $W=\sum_i\abs{a_i}$. There is a constant $C_{d,\epsilon}$ such that,
+if $W\geq C_{d,\epsilon}n^{d/2}$, a deterministic algorithm constructs
+a nonnegative rational-valued function $\operatorname{Cert}$ satisfying
+\[
+ \sup_{x\in\{\pm1\}^n}
+ \abs{\sum_{i=1}^M a_i b_i\chi_{F_i}(x)}
+ \leq\operatorname{Cert}(b)
+ \qquad\text{for every }b\in\{\pm1\}^M.
+\]
+For an explicitly specified $\eta=n^{-O_{d,\epsilon}(1)}>0$, it also satisfies
+\begin{equation}\label{even:main-expectation}
+ \E_{b\sim\mathcal D}\operatorname{Cert}(b)
+ \leq \frac{41}{128}\epsilon W
+\end{equation}
+for every $\eta$-biased distribution $\mathcal D$ on the original $M$ signs.
+Construction and evaluation have polynomial bit complexity for fixed
+$d,\epsilon$.
+\end{theorem}
+
+The decomposition used to construct $\operatorname{Cert}$ may depend on a
+fixed explicit biased space. The distribution $\mathcal D$ in
+Eqn.~\eqref{even:main-expectation} is arbitrary and need not be that space.
+This distinction will allow different Fourier layers to share one final
+sign vector.
+
+\subsection{Normalized matrices and local allocations}
+
+Set $\ell=d/2$, $N=\binom n\ell$, and $c=\binom d\ell$.
+For each label $i$, let $A_i$ be the adjacency matrix on
+$\Omega=\binom{[n]}\ell$ that joins $S$ to $S\triangle F_i$ whenever
+$\abs{S\cap F_i}=\ell$. Each undirected edge is included once, so
+$A_i$ has exactly $c$ nonzero entries. Put $w_i=\abs{a_i}$ and discard
+zero-weight labels from the matrices, while retaining their positions in
+the original sign vector.
+
+For a nonempty set $R$ of positive-weight labels, write
+\[
+ W_R=\sum_{i\in R}w_i,\qquad
+ A_R^{\mathrm{abs}}=\sum_{i\in R}w_i A_i,\qquad
+ A_{R,b}=\sum_{i\in R}a_i b_i A_i.
+\]
+Let $d_R(S)$ be the row sum of $A_R^{\mathrm{abs}}$, and define
+\begin{equation}\label{even:normalization}
+ \overline d_R=\frac{cW_R}{N},\qquad
+ \Gamma_R=\diag(d_R(S))+\overline d_R I,\qquad
+ K_{R,b}=\Gamma_R^{-1/2}A_{R,b}\Gamma_R^{-1/2}.
+\end{equation}
+For $z(x)_S=\chi_S(x)$, direct counting gives
+\begin{equation}\label{even:comparison}
+ z(x)^T A_{R,b}z(x)=c\sum_{i\in R}a_i b_i\chi_{F_i}(x),
+ \qquad z(x)^T\Gamma_Rz(x)=2cW_R.
+\end{equation}
+Consequently, $2W_R\norm{K_{R,b}}$ is a pointwise upper bound for the
+absolute value of the residual polynomial.
+
+Fix a capacity $D>0$ and a window $V\subseteq[n]$. An allocation in $V$
+consists of nonnegative numbers $\lambda_{i,v}$, for labels $i\in R$
+with $F_i\subseteq V$ and vertices $v\in F_i$, satisfying
+\begin{equation}\label{even:allocation}
+ \sum_{v\in F_i}\lambda_{i,v}=w_i,
+ \qquad
+ \sum_{i:F_i\subseteq V}\lambda_{i,v}\leq D
+ \quad(v\in V).
+\end{equation}
+Feasibility is a rational maximum-flow problem: labels have demands $w_i$,
+vertices have capacities $D$, and a label can send flow only to its scope.
+The flow condition is
+$\sum_{i\in J}w_i\leq D\abs{\bigcup_{i\in J}F_i}$ for every subfamily
+$J$ of the labels in $V$. Thus a failed flow supplies a subwindow
+$U\subseteq V$ such that
+\begin{equation}\label{even:dense-window}
+ \sum_{i\in R:F_i\subseteq U}w_i>D\abs U.
+\end{equation}
+Indeed, take $U$ to be the union of a violating subfamily. Both the flow
+test and the extraction of $U$ take polynomial time.
+
+\begin{lemma}\label{even:good-trace}
+Fix an integer $s\geq1$. In the parity lift truncated to memories of
+size at most $s$, retain only states whose windows admit
+Eqn.~\eqref{even:allocation}. The total weight of its closed
+empty-memory walks of length $2s$, summed over starting rows, is at most
+\begin{equation}\label{even:good-mass}
+ N\left(\frac{4(D+1)\ell}{\overline d_R}\right)^s.
+\end{equation}
+The total weight before removing any states equals
+$\E_{b\text{ uniform}}\tr(K_{R,b}^{2s})$.
+\end{lemma}
+
+\begin{proof}
+A lifted state is $(S,P)$, where $S\in\Omega$ and $P\subseteq R$ has
+$\abs P\leq s$. A move of label $i$ changes it to
+$(S\triangle F_i,P\triangle\{i\})$ and has unnormalized weight $w_i$.
+Its normalized weight is $w_i/\sqrt{\Gamma_R(S,S)\Gamma_R(T,T)}$.
+The window of $(S,P)$ is
+\[
+ V(S,P)=S\cup\bigcup_{i\in P}F_i.
+\]
+Along an edge the two windows are nested: inserting $i$ into memory
+replaces the window by its union with $F_i$.
+
+Fix one feasible allocation for each good window. For an edge whose
+endpoint windows agree, split its weight into pieces $\lambda_{i,v}$
+and orient each piece toward the endpoint whose row contains $v$.
+The row toggle ensures that exactly one endpoint contains $v$.
+At a fixed state $(S,P)$, these pieces have total incoming weight at most
+$D\ell$: at each $v\in S$ they are a subset of that window's allocation,
+and at most one incident edge has any given original label.
+
+Orient an edge with unequal windows toward the larger window.
+For such an edge entering $(S,P)$, choose a vertex $v$ newly present
+in its window. The toggled label $i$ was inserted into memory.
+Since $v$ belongs to $F_i$ but not to the preceding row, the row toggle
+places it in $S$. Moreover, $i$ is the unique label in $P$ containing
+$v$, because any other such label was already present at the other
+endpoint. A witness $v$ therefore determines the incoming edge.
+There are at most $\ell$ choices of witness, and each edge weighs at most
+one. The total incoming weight is at most $(D+1)\ell$.
+The outgoing weight at a state with row $S$ is at most $d_R(S)$.
+By \Cref{lem:orientation}, the induced good-state operator has norm
+at most $2\sqrt{(D+1)\ell/\overline d_R}$. Its return mass from the
+$N$ empty-memory states is bounded by Eqn.~\eqref{even:good-mass}.
+
+Finally, expand $\tr(K_{R,b}^{2s})$ into labeled closed walks.
+Uniform signs kill every word in which some label occurs oddly.
+In each surviving word, the product of the $a_i$ equals the product of
+the $w_i$, since all multiplicities are even. Such a word lifts uniquely
+to an empty-memory closed walk. At time $j$ its memory has size at most
+$\min\{j,2s-j\}\leq s$, so truncation loses none of these words.
+This proves the trace identity, without any assumption about even covers.
+\end{proof}
+
+For later use, the absolute Fourier coefficient mass of
+$\tr(K_{R,b}^{2s})$ is at most $N$.
+Indeed, the sum of absolute walk contributions is
+$\tr((K_R^{\mathrm{abs}})^{2s})$, where
+$K_R^{\mathrm{abs}}=\Gamma_R^{-1/2}A_R^{\mathrm{abs}}\Gamma_R^{-1/2}$.
+This matrix is similar to the substochastic matrix
+$\Gamma_R^{-1}A_R^{\mathrm{abs}}$, hence has norm at most one.
+In particular, \Cref{lem:bias-transfer} gives
+\begin{equation}\label{even:trace-transfer}
+ \abs{\E_{b\sim\mathcal D}\tr(K_{R,b}^{2s})
+       -\E_{b\text{ uniform}}\tr(K_{R,b}^{2s})}
+ \leq\eta N
+\end{equation}
+for every $\eta$-biased $\mathcal D$.
+
+\subsection{A deterministic decomposition}
+
+Choose the following parameters:
+\begin{align}
+ s&=\lceil\log_2(4N)\rceil,&
+ L&=\min\{n,\ell+ds\},&
+ \zeta&=\epsilon/32,\notag\\
+ D&=(64/\epsilon)^2,&
+ \beta&=\zeta^{2s},&
+ \eta&=\min\left\{\frac{\beta}{8N},
+                    (\epsilon/64)^{2L}\right\}.
+ \label{even:parameters}
+\end{align}
+It is enough to impose the explicit density condition
+\begin{equation}\label{even:density}
+ W\geq\frac{64(D+1)\ell}{\epsilon\zeta^2}\frac Nc.
+\end{equation}
+This follows from $W\geq C_{d,\epsilon}n^{d/2}$ after choosing the
+constant sufficiently large. Fix one explicit $\eta$-biased space
+$\mathcal Q$ on the original $M$ coordinates, as in
+\Cref{lem:small-bias}.
+
+Start with all positive-weight labels in $R$ and an empty list of blocks.
+Perform the following steps until a remainder is recorded.
+\begin{enumerate}
+\item If $W_R\leq\epsilon W/8$, record $R$ as a small remainder and stop.
+\item Otherwise form the matrices in Eqn.~\eqref{even:normalization}
+and compute the exact rational average
+\[
+ T_{\mathcal Q}=
+ \E_{b\sim\mathcal Q}\tr\bigl((\Gamma_R^{-1}A_{R,b})^{2s}\bigr).
+\]
+If $T_{\mathcal Q}\leq\beta$, record $R$ as a spectral remainder and stop.
+\item If $T_{\mathcal Q}>\beta$, find a window $U$ satisfying
+Eqn.~\eqref{even:dense-window}, with $\abs U\leq L$.
+Record all labels of $R$ supported on $U$ as a block, remove them from
+$R$, and repeat.
+\end{enumerate}
+
+We justify the third step. The first test has failed, and
+Eqn.~\eqref{even:density} therefore implies
+\[
+ \overline d_R=\frac{cW_R}{N}
+ >\frac{8(D+1)\ell}{\zeta^2}.
+\]
+By Eqn.~\eqref{even:trace-transfer}, the uniform-sign trace is greater
+than $7\beta/8$. On the other hand, \Cref{even:good-trace} bounds the
+mass of empty-memory closed walks staying in good states by
+\[
+ N\left(\frac{\zeta^2}{2}\right)^s\leq\frac\beta4.
+\]
+The mass visiting a bad state is consequently greater than $5\beta/8$.
+Apply \Cref{thm:extraction}, with walk length $2s$ and
+$\delta=\beta/2$, to the nonnegative labeled transition matrix
+$\Gamma_R^{-1}A_R^{\mathrm{abs}}$. Its memory increment for label $i$
+is the $i$th original coordinate. Closed transition weights agree with
+the symmetric normalized weights by telescoping the diagonal factors.
+The bad predicate first rejects memories larger than $s$ and then tests
+allocation feasibility in their windows. Every relevant closed walk has
+memory at most $s$, so this filter loses none of the promised bad mass.
+The extracted window has size at most $L$, and its failed flow supplies
+the required subwindow $U$.
+
+Each iteration removes at least one positive-weight label. There are
+therefore at most $M$ iterations, and the recorded blocks are disjoint
+in original labels. Their windows may overlap.
+
+\subsection{Pointwise certificates and their expectations}
+
+Let $I_j$ be a recorded block with window $U_j$, and put
+$W_j=\sum_{i\in I_j}w_i$. Define its exact local certificate by
+\[
+ C_j(b)=\max_{x\in\{\pm1\}^{U_j}}
+       \abs{\sum_{i\in I_j}a_i b_i\chi_{F_i}(x)}.
+\]
+A small remainder contributes $C_R(b)=W_R$.
+For a spectral remainder, put
+\[
+ T_R(b)=\tr\bigl((\Gamma_R^{-1}A_{R,b})^{2s}\bigr),
+ \qquad \alpha_R(b)=T_R(b)^{1/(2s)}.
+\]
+The trace is nonnegative because the matrix is similar to a real
+symmetric matrix. Compute a rational $\widehat\alpha_R(b)$ with
+\[
+ \alpha_R(b)\leq\widehat\alpha_R(b)
+ \leq\alpha_R(b)+\epsilon/256,
+\]
+and set $C_R(b)=2W_R\widehat\alpha_R(b)$.
+Finally, define
+\begin{equation}\label{even:certificate}
+ \operatorname{Cert}(b)=\sum_j C_j(b)+C_R(b).
+\end{equation}
+The local certificates are exact. For a spectral remainder,
+$\norm{K_{R,b}}\leq\alpha_R(b)$, so
+Eqn.~\eqref{even:comparison} proves its pointwise soundness.
+The triangle inequality now proves pointwise soundness of
+Eqn.~\eqref{even:certificate} for every sign vector.
+
+Fix an arbitrary final $\eta$-biased distribution $\mathcal D$.
+For a recorded block, set $t=\abs{U_j}\geq1$ and
+$p_b(x)=\sum_{i\in I_j}a_i b_i\chi_{F_i}(x)$.
+The Rademacher moment bound (\Cref{lem:moment}) and
+$\sum_{i\in I_j}a_i^2\leq W_j$ give
+\[
+ \E_{b\text{ uniform}}p_b(x)^{2t}
+ \leq(2t-1)!!\,W_j^t\leq(2tW_j)^t.
+\]
+As a polynomial in the original signs, $(p_b(x)/W_j)^{2t}$ has
+Fourier coefficient mass at most one: expanding before reducing
+$b_i^2=1$ bounds that mass by
+$(\sum_{i\in I_j}\abs{a_i}/W_j)^{2t}=1$.
+Thus \Cref{lem:bias-transfer} implies
+\[
+ \E_{b\sim\mathcal D}p_b(x)^{2t}
+ \leq(2tW_j)^t+\eta W_j^{2t}.
+\]
+Use $C_j(b)^{2t}\leq\sum_x p_b(x)^{2t}$, Jensen's inequality,
+and subadditivity of the $1/(2t)$ power to obtain
+\begin{align}
+ \E_{b\sim\mathcal D}C_j(b)
+ &\leq 2\sqrt{tW_j}+\sqrt2\,\eta^{1/(2t)}W_j\notag\\
+ &\leq\left(\frac{2}{\sqrt D}
+              +\frac{\sqrt2\epsilon}{64}\right)W_j
+ \leq\frac{\epsilon}{16}W_j.
+ \label{even:block-expectation}
+\end{align}
+Here $W_j>Dt$ by extraction, and $t\leq L$ with
+Eqn.~\eqref{even:parameters} gives
+$\eta^{1/(2t)}\leq\epsilon/64$.
+
+A small remainder contributes at most $\epsilon W/8$.
+At a spectral stop, compare the final distribution to uniform and
+then to $\mathcal Q$ using Eqn.~\eqref{even:trace-transfer}:
+\[
+ \E_{b\sim\mathcal D}T_R(b)
+ \leq\beta+2\eta N\leq\frac54\beta.
+\]
+Jensen's inequality gives
+$\E\alpha_R(b)\leq((5/4)\beta)^{1/(2s)}\leq2\zeta$, and hence
+\begin{equation}\label{even:remainder-expectation}
+ \E_{b\sim\mathcal D}C_R(b)
+ \leq4\zeta W_R+\frac{\epsilon}{128}W_R
+ \leq\left(\frac18+\frac1{128}\right)\epsilon W.
+\end{equation}
+The blocks are disjoint in labels, so $\sum_jW_j\leq W$.
+Charging both possible remainder bounds, although only one occurs,
+Eqns.~\eqref{even:block-expectation} and
+\eqref{even:remainder-expectation} imply
+\[
+ \E_{b\sim\mathcal D}\operatorname{Cert}(b)
+ \leq\left(\frac1{16}+\frac18+\frac18+\frac1{128}\right)
+       \epsilon W
+ =\frac{41}{128}\epsilon W.
+\]
+No independence between blocks is used in summing these expectations.
+
+\subsection{Bit complexity}
+
+For fixed $d,\epsilon$, we have $N=n^{O_d(1)}$, $s,L=O_d(\log n)$,
+and $\beta^{-1},\eta^{-1}=n^{O_{d,\epsilon}(1)}$.
+The explicit biased space has size polynomial in $M$ and $1/\eta$.
+The decomposition uses at most $M$ iterations, and
+\Cref{thm:extraction} makes each window search polynomial in the graph
+input size and $1/\beta$. Every recorded local maximum can be evaluated
+by enumerating $2^{\abs{U_j}}\leq2^L$ assignments.
+
+All matrices, capacities, and trace averages are rational.
+The trace is computed using $\Gamma_R^{-1}A_{R,b}$, so no matrix square
+roots are needed. A common denominator has polynomial bit length, and
+powers through $2s$ preserve a polynomial bit bound.
+Moreover, $T_R(b)\leq N$ by absolute domination, so
+$\alpha_R(b)\leq N^{1/(2s)}<2$.
+Bisection on $[0,2]$, with comparisons of rational $2s$th powers,
+therefore computes the required upper approximation with polynomial bit
+complexity. This completes the proof of \Cref{thm:even-weight}.
+
+% End even
+
+
+% Begin forests
+\section{Dense Forests from Local Capacity Violations}
+\label{sec:forests}
+
+The odd-degree construction will delete pairs of original labels while
+retaining the original sign variables.  A forest of such pairs is useful
+because its edge products are independent under uniform original signs.
+The first lemma obtains a dense forest from a failed fractional capacity
+condition.  The second turns this forest into a rational certificate whose
+expectation is small under every sufficiently small-biased distribution on the
+original signs.
+
+\begin{lemma}[A forest from a capacity violation]
+\label{lem:forest-alternative}
+Let $G=(V,E)$ be a finite simple graph, let each $i\in V$ have a nonempty
+residual set $R_i$ in a finite universe $U$, and let $D\geq 0$ be rational.
+Consider the system
+\begin{equation}
+\begin{aligned}
+ \lambda_{iv}&\geq 0 &&(i\in V,\ v\in R_i),\\
+ t_i&=\sum_{v\in R_i}\lambda_{iv} &&(i\in V),\\
+ t_i+t_j&\geq 1 &&(ij\in E),\\
+ \sum_{i:v\in R_i}\lambda_{iv}&\leq D &&(v\in U).
+\end{aligned}
+\label{forest:eq:capacity}
+\end{equation}
+If this system is infeasible, one can find a forest $T\subseteq E$ such
+that, writing $V(T)$ for its endpoints and
+$U_T=\bigcup_{i\in V(T)}R_i$,
+\begin{equation}
+ |T|>D|U_T|.
+ \label{forest:eq:density}
+\end{equation}
+The forest can be found deterministically in polynomial bit complexity.
+Moreover, adding the conditions $t_i\leq 1$ to
+\eqref{forest:eq:capacity} does not change its feasibility.
+\end{lemma}
+
+\begin{proof}
+First suppose a feasible allocation has $t_i>1$.  Dividing all
+$\lambda_{iv}$ at this vertex by $t_i$ reduces its total allocation to
+one and decreases every capacity load.  Each incident edge remains
+covered because its endpoint $i$ alone now contributes one.  Applying
+this operation at every such vertex proves the last assertion.
+
+Farkas' lemma gives nonnegative rational edge weights $y_e$ and vertex
+prices $p_v$, for $v\in U$, such that
+\begin{equation}
+ d_i:=\sum_{e\ni i}y_e\leq p_v\quad(v\in R_i),
+ \qquad
+ \sum_{e\in E}y_e>D\sum_{v\in U}p_v.
+ \label{forest:eq:dual}
+\end{equation}
+Indeed, the coefficient inequality for the nonnegative variable
+$\lambda_{iv}$ is precisely $d_i\leq p_v$.  Since the residual sets
+are nonempty, any witness has $\sum_vp_v>0$.  We may therefore normalize
+it to $\sum_vp_v=1$.  An explicit way to find a witness is to maximize
+$\sum_ey_e$ subject to this normalization, nonnegativity, and the
+inequalities $d_i\leq p_v$.  This is a bounded rational linear program:
+each $d_i\leq 1$, and hence each $y_e\leq 1$.  Its optimum is greater
+than $D$ whenever \eqref{forest:eq:capacity} is infeasible.
+
+For the threshold argument, replace each price by its smallest allowed
+value,
+\begin{equation}
+ p_v=\max_{i:v\in R_i}d_i,
+ \label{forest:eq:minimal-prices}
+\end{equation}
+where an empty maximum is zero.  This preserves the strict inequality
+in \eqref{forest:eq:dual}.  If desired, rescale both $y$ and $p$ once
+more so that the price sum is one; this also preserves
+\eqref{forest:eq:minimal-prices}.
+
+For $e=ij$, put $w_e=\min(d_i,d_j)$ and define
+\begin{equation}
+ z_e=
+ \begin{cases}
+ y_e/w_e,&y_e>0,\\
+ 0,&y_e=0.
+ \end{cases}
+ \label{forest:eq:fractional-forest}
+\end{equation}
+The denominator is positive whenever it is used.  Order the vertices
+by increasing degree $d_i$, breaking ties by a fixed total order, and
+orient each positive-$y$ edge towards its larger endpoint.  At each
+vertex of positive degree, the outgoing $z$-weight is at most one:
+\[
+ \sum_{e\text{ directed out of }i}z_e
+ =\frac{1}{d_i}\sum_{e\text{ directed out of }i}y_e\leq 1.
+\]
+For every nonempty $S\subseteq V$, its largest vertex has no outgoing
+edge inside $G[S]$.  Summing the outgoing bounds over the other
+vertices gives
+\begin{equation}
+ \sum_{e\in E(G[S])}z_e\leq |S|-1.
+ \label{forest:eq:polytope}
+\end{equation}
+These are the graphic forest-polytope inequalities.  More explicitly,
+for any edge set $Q\subseteq E$, apply
+\eqref{forest:eq:polytope} to the vertex sets of its nontrivial
+connected components to obtain
+\begin{equation}
+ \sum_{e\in Q}z_e\leq\rank(Q).
+ \label{forest:eq:rank-inequality}
+\end{equation}
+Here $\rank(Q)$ denotes the number of edges in any spanning forest of
+$(V,Q)$.
+
+We record directly the weighted consequence of these inequalities.
+For nonnegative edge weights $w$, write
+$E_t=\{e:w_e\geq t\}$.  Kruskal's maximum-spanning-forest algorithm
+produces a forest $T_*$ whose edges in $E_t$ form a spanning forest of
+$(V,E_t)$, apart from immaterial threshold endpoints.  Therefore
+\begin{equation}
+ \sum_e w_ez_e
+ =\int_0^\infty\sum_{e\in E_t}z_e\,dt
+ \leq\int_0^\infty\rank(E_t)\,dt
+ =\sum_{e\in T_*}w_e.
+ \label{forest:eq:weighted-domination}
+\end{equation}
+This also supplies a direct justification of the needed forest-polytope
+property, without appealing to an integrality theorem for a linear
+program.  Applied to the weights in
+\eqref{forest:eq:fractional-forest}, it gives
+$\sum_{e\in T_*}w_e\geq\sum_ey_e$.
+
+For $t>0$, let $S_t=\{i:d_i\geq t\}$ and
+$U_t=\bigcup_{i\in S_t}R_i$.  The condition $w_{ij}\geq t$ is exactly
+$i,j\in S_t$, while \eqref{forest:eq:minimal-prices} gives the second
+of the following identities:
+\begin{equation}
+ \sum_{e\in T_*}w_e
+ =\int_0^\infty\rank(G[S_t])\,dt,
+ \qquad
+ \sum_vp_v=\int_0^\infty|U_t|\,dt.
+ \label{forest:eq:threshold-integrals}
+\end{equation}
+Combining \eqref{forest:eq:dual},
+\eqref{forest:eq:weighted-domination}, and
+\eqref{forest:eq:threshold-integrals}, we obtain
+\[
+ \int_0^\infty\bigl(\rank(G[S_t])-D|U_t|\bigr)\,dt>0.
+\]
+Consequently some positive degree threshold satisfies
+$\rank(G[S_t])>D|U_t|$.  Take any spanning forest of $G[S_t]$ and
+discard its isolated vertices.  Its endpoint residual union is
+contained in $U_t$, so this forest satisfies
+\eqref{forest:eq:density}.
+
+All linear programs above have polynomially many variables and
+constraints and rational data of polynomial bit length.  Standard
+rational linear programming returns an optimal solution of polynomial
+bit length.  There are at most $|V|$ distinct positive degree
+thresholds, and the graph ranks and spanning forests at all of them
+can be computed in polynomial time.  Comparisons at these rational
+thresholds are exact.  This proves the asserted constructivity.
+\end{proof}
+
+The preceding implication is one-way: a feasible allocation need not
+exclude dense forests.  For example, when every residual is the same
+singleton, a star has a feasible allocation of capacity one by placing
+all allocation at its center, however many leaves the star has.  We
+will only use infeasibility to produce a forest.
+
+\begin{lemma}[A certificate for a dense forest]
+\label{lem:forest-certificate}
+Let $T$ be a forest whose vertices are distinct original labels in
+$[M]$, with residual sets $R_i$, and let
+$U_T=\bigcup_{i\in V(T)}R_i$ have size $1\leq u\leq L$.
+Let $a_i\in\mathbb Q\cap[-1,1]$, and put $m_T=|T|$ and
+\[
+ Q_T(b,x)=\sum_{ij\in T}a_ia_jb_ib_j
+             \chi_{R_i\triangle R_j}(x).
+\]
+Suppose $\sigma\in\mathbb Q\cap(0,1)$,
+$D\geq32\sigma^{-2}$, and $m_T>Du$.  If
+\begin{equation}
+ \eta\leq\frac{\sigma^{2(L+1)}}{8\cdot2^L},
+ \label{forest:eq:bias}
+\end{equation}
+then there is a nonnegative rational certificate $C_T(b)$ such that
+\begin{equation}
+ \sup_{x\in\{\pm1\}^{U_T}}|Q_T(b,x)|\leq C_T(b)
+ \quad\text{for every }b,
+ \qquad
+ \E_{b\sim\mathcal Q}C_T(b)\leq\sigma m_T
+ \label{forest:eq:certificate-guarantees}
+\end{equation}
+for every fully $\eta$-biased distribution $\mathcal Q$ on the
+original signs $b_1,\ldots,b_M$.  The certificate is exactly evaluable
+in time polynomial in the input length and $2^u$.
+\end{lemma}
+
+\begin{proof}
+Set $p=2(u+1)$ and define
+\begin{equation}
+ \Phi_T(b)=\sum_{x\in\{\pm1\}^{U_T}}
+       \left(\frac{Q_T(b,x)}{\sigma m_T}\right)^p,
+ \qquad
+ C_T(b)=\sigma m_T R_p(\Phi_T(b)),
+ \label{forest:eq:potential}
+\end{equation}
+where $R_p$ is the rational envelope from
+\eqref{eq:young-envelope}.  The exponent is even, so every summand is
+nonnegative.  Its largest summand gives
+\[
+ \sup_x|Q_T(b,x)|
+ \leq\sigma m_T\Phi_T(b)^{1/p}
+ \leq\sigma m_T R_p(\Phi_T(b))=C_T(b).
+\]
+
+Under uniform independent original signs, the products
+$\{b_ib_j:ij\in T\}$ are mutually independent uniform signs.  To
+see this, prescribe an arbitrary sign on every edge and choose one
+root sign in each connected component.  Every other vertex sign is
+then uniquely recovered along the component's tree paths.  Thus
+every edge-sign assignment has exactly two preimages per connected
+component, with all unused original signs remaining free.  Repeated
+residual sets or repeated characters cause no change to this argument:
+the vertices of the forest are original labels.
+
+For a fixed $x$, the independent-sign moment bound in
+Lemma~\ref{lem:moment}, with $t=u+1$ and coefficients of magnitude
+at most one, gives
+\[
+ \E_{\mathrm{unif}}Q_T(b,x)^{2(u+1)}
+ \leq\bigl(2(u+1)m_T\bigr)^{u+1}.
+\]
+Consequently
+\begin{align}
+ \E_{\mathrm{unif}}\Phi_T
+ &\leq 2^u
+       \left(\frac{2(u+1)}{\sigma^2m_T}\right)^{u+1}
+ \nonumber\\
+ &\leq 2^u
+       \left(\frac{u+1}{16u}\right)^{u+1}
+ \leq 2^u8^{-(u+1)}
+ \leq\frac18.
+ \label{forest:eq:uniform-moment}
+\end{align}
+We have used $m_T>Du$, $D\geq32\sigma^{-2}$, and $u\geq1$.
+
+It remains to transfer this estimate on the original sign space.
+For each fixed $x$, the sum of the absolute Fourier coefficients of
+$Q_T(b,x)$ as a polynomial in $b$ is at most
+$\sum_{ij\in T}|a_ia_j|\leq m_T$.  Multiplication of Fourier
+polynomials is submultiplicative for this coefficient sum; reductions
+using $b_i^2=1$ can only decrease it.  Thus the Fourier coefficient
+sum of $\Phi_T$ is at most $2^u\sigma^{-p}$.  Lemma~\ref{lem:bias-transfer}
+and \eqref{forest:eq:bias} imply
+\begin{equation}
+ \bigl|\E_{\mathcal Q}\Phi_T-\E_{\mathrm{unif}}\Phi_T\bigr|
+ \leq\eta2^u\sigma^{-2(u+1)}
+ \leq\frac18\,2^{u-L}\sigma^{2(L-u)}
+ \leq\frac18.
+ \label{forest:eq:transfer}
+\end{equation}
+In particular, $\E_{\mathcal Q}\Phi_T\leq1/4$.  The affine formula
+$R_p(z)=(p-1+z)/p$ now yields
+\[
+ \E_{\mathcal Q}C_T
+ =\sigma m_T\frac{p-1+\E_{\mathcal Q}\Phi_T}{p}
+ \leq\sigma m_T,
+\]
+as required.
+
+The construction uses only rational sums, products, and integer
+powers.  It enumerates $2^u$ assignments and computes powers of
+degree $2(u+1)$, so the evaluation time and bit lengths are polynomial
+in the input length and $2^u$.
+\end{proof}
+
+Different extracted forests may share original labels.  Independence
+across forests is neither claimed nor needed: each application of
+Lemma~\ref{lem:forest-certificate} bounds an expectation on the same
+original sign space, and linearity of expectation bounds any
+nonnegative weighted sum of their certificates.  The final algorithm
+will minimize such a sum over one common biased space.
+
+% End forests
+
+
+% Begin odd
+\section{Certificates for Odd-Degree XOR}\label{sec:odd}
+
+This section proves the signing theorem for odd degree.  We retain the
+original clause labels throughout: two clauses with the same scope still
+have different sign variables.  The construction first groups clauses by
+common centers, then represents products of residual clauses by a weighted
+Kikuchi matrix.  A fractional local condition either bounds the appropriate
+memory lift or supplies a forest whose pair products can be certified
+separately.  Equalizing the total matrix weight of each original pair makes
+this deletion procedure compatible with an exact polynomial identity.
+
+\begin{theorem}[Odd-degree signing certificates]\label{thm:odd-signing}
+Fix an odd integer $d\geq3$ and a rational $0<\epsilon<1$.  There is a
+constant $C_{d,\epsilon}$ and a deterministic algorithm with the following
+property.  Its input consists of $M$ labeled sets $F_i\in\binom{[n]}d$ and
+rational coefficients $a_i\in[-1,1]$, where
+\[
+ M\geq C_{d,\epsilon}n^{d/2}.
+\]
+The algorithm constructs an explicitly specified inverse-polynomial bias
+parameter $\eta>0$ and an exactly evaluable nonnegative rational certificate
+$\mathcal C:\{\pm1\}^M\to\mathbb Q_{\geq0}$ such that
+\begin{equation}\label{odd:eq:certificate-theorem}
+ \sup_{x\in\{\pm1\}^n}
+ \left|\sum_{i=1}^M a_i b_i\chi_{F_i}(x)\right|
+ \leq\mathcal C(b),\qquad
+ \E_{b\sim\mathcal Q}\mathcal C(b)\leq\frac{\epsilon M}{2}
+\end{equation}
+for every $b$ and every fully $\eta$-biased distribution $\mathcal Q$ on
+the original $M$ signs.  Construction and evaluation have polynomial bit
+complexity for fixed $d,\epsilon$.
+\end{theorem}
+
+We give the proof in several steps.  All constants below depend only on
+$d,\epsilon$.  Put
+\begin{equation}\label{odd:eq:bundle-constants}
+ e=\epsilon/4,\qquad
+ B=\lceil64e^{-2}\rceil,\qquad
+ R=\lceil128de^{-2}\rceil,\qquad \ell=2d.
+\end{equation}
+Until the final paragraph, assume $n\geq n_0:=100d\ell$.
+
+\subsection{Bundles and their spread}
+
+For $0\leq q\leq d-1$, define the integer threshold
+\begin{equation}\label{odd:eq:bundle-thresholds}
+ h_q=\left\lceil BR^q\max\{1,n^{q-d/2}\}\right\rceil.
+\end{equation}
+Process $q=0,1,\ldots,d-1$ in increasing order.  While a $(d-q)$-set
+$C$ is contained in at least $h_q$ currently remaining labels, remove
+exactly $h_q$ such labels as a bundle with center $C$.  The residual of
+label $i$ in this bundle is $R_i=F_i\setminus C$, of size $q$.  The
+algorithm exhausts a stage before proceeding to the next one.  At level
+$q$, let $H_q$ denote the number of bundles and let $M_q=H_qh_q$.
+Every original label lies in at most one bundle.
+
+\begin{lemma}[Spread and the remainder]\label{odd:lem:spread}
+In a level-$q$ bundle, every nonempty residual set $T$ of size $t\leq q$
+is contained in at most $h_{q-t}-1$ residuals.  Consequently, for $q>0$,
+each residual has at most $qh_{q-1}$ overlapping partners, and
+\begin{equation}\label{odd:eq:overlap}
+ \frac{qh_{q-1}}{h_q}\leq\frac{2q}{R}
+ \leq\eta_{\mathrm{ov}}:=\frac{2d}{R}\leq\frac{e^2}{64}.
+\end{equation}
+The number $M_{\mathrm{rest}}$ of unbundled labels satisfies
+\begin{equation}\label{odd:eq:unbundled}
+ M_{\mathrm{rest}}<\frac{nh_{d-1}}d
+ \leq U_0n^{d/2},\qquad
+ U_0:=\frac{BR^{d-1}+1}{d}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+If $h_{q-t}$ labels in the bundle had residuals containing $T$, then all
+these labels were still present when the earlier stage $q-t$ terminated.
+The set $C\cup T$, of size $d-(q-t)$, would have allowed another bundle
+at that stage, a contradiction.  Taking $t=q$ gives the bound
+$h_0-1=B-1$ on exact repetitions, so the argument does not require
+distinct scopes.
+
+Apply the spread bound to each singleton in a fixed residual and take a
+union bound to count overlapping partners.  Since the function
+$q\mapsto\max\{1,n^{q-d/2}\}$ is nondecreasing and $BR^q\geq1$,
+the ceiling in \eqref{odd:eq:bundle-thresholds} gives
+$h_{q-1}/h_q\leq2/R$.  Finally, after the last stage every input vertex
+belongs to fewer than $h_{d-1}$ unbundled labels.  Counting incidences
+gives $dM_{\mathrm{rest}}<nh_{d-1}$, and
+$h_{d-1}\leq BR^{d-1}n^{d/2-1}+1$ proves
+\eqref{odd:eq:unbundled}.
+\end{proof}
+
+Level $q=0$ consists of bundles of identical full scopes.  Its treatment
+will be scalar.  We now fix a positive level, suppress the subscript on
+$h=h_q$ and $H=H_q$, and write $M_q=Hh$.
+
+\subsection{Balanced instances and equal total pair weights}
+
+The matrix rows are indexed by $\Omega=\binom{[n]}\ell$, and
+$N=|\Omega|$.  Set $a=\lfloor q/2\rfloor$ and $c=\lceil q/2\rceil$;
+these letters in this subsection are unrelated to the clause coefficients.
+For every unordered within-bundle pair $p=\{i,j\}$ with
+$R_i\cap R_j=\varnothing$, include every undirected instance
+\begin{equation}\label{odd:eq:balanced-move}
+ S\longleftrightarrow S'=S\triangle R_i\triangle R_j,
+ \qquad \{|S\cap R_i|,|S\cap R_j|\}=\{a,c\}.
+\end{equation}
+Both endpoints have size $\ell$.  Each original pair creates exactly
+\begin{equation}\label{odd:eq:instance-count}
+ T_q=
+ \begin{cases}
+ \dfrac12\binom q{q/2}^{\!2}\binom{n-2q}{\ell-q},&q\text{ even},\\[4pt]
+ \binom q{\lfloor q/2\rfloor}^{\!2}\binom{n-2q}{\ell-q},&q\text{ odd}
+ \end{cases}
+\end{equation}
+instances.  Indeed, an even $q$ permits one intersection pattern and an
+odd $q$ permits two, after which each undirected instance has been counted
+twice.  The instances remain labeled by their original pair even when
+different pairs have identical endpoints.
+For a nonempty positive level, the pair collection is nonempty:
+\eqref{odd:eq:overlap} and $1/h+\eta_{\mathrm{ov}}<1$ ensure that every
+bundle has a disjoint pair.
+
+We use the reciprocal-excess weights of
+Schmidhuber--Hastings~\cite[Section~3.2]{SH26Moore}.  An instance $f$ with
+endpoints $S,S'$ and labels $i,j$ has four ports
+\[
+ \mathcal P(f)=\{(S,i),(S,j),(S',i),(S',j)\}.
+\]
+Let $c(z)$ be the number of initial instances using port $z$, and put
+\begin{equation}\label{odd:eq:port-weight}
+ \delta_f=1+\sum_{z\in\mathcal P(f)}(c(z)-1),\qquad
+ w_f=\delta_f^{-1}.
+\end{equation}
+Since $\delta_f\geq c(z)$ for every port of $f$,
+\begin{equation}\label{odd:eq:port-capacity}
+ \sum_{f:\,z\in\mathcal P(f)}w_f\leq1.
+\end{equation}
+
+\begin{lemma}[Per-pair contention and equalization]\label{odd:lem:equalize}
+There is an explicit constant
+\[
+ \Xi:=16BR^{d-1}(8\ell)^{d-1}
+\]
+such that, for every original disjoint pair $p$,
+\begin{equation}\label{odd:eq:pair-contention}
+ \frac1{T_q}\sum_{f\text{ of }p}(\delta_f-1)\leq\Xi.
+\end{equation}
+One can construct positive rational weights $\widetilde w_f\leq w_f$
+and a common rational $\beta>0$ such that
+\begin{equation}\label{odd:eq:equal-pair-mass}
+ \sum_{f\text{ of }p}\widetilde w_f=\beta
+ \quad\text{for every }p,\qquad
+ \beta\geq\frac{T_q}{1+\Xi}.
+\end{equation}
+Their port loads remain at most one.  With $K_0:=2(1+\Xi)$, they satisfy
+\begin{equation}\label{odd:eq:beta-estimate}
+ \frac N\beta\leq K_0n^q,\qquad
+ \frac{N}{\beta h}\leq K_0n^{d/2}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Fix $p=\{i,j\}$.  Choose one of its instances uniformly, then choose one
+of that instance's two endpoints uniformly and call it $S$.  This is
+equivalent to choosing a balanced starting row uniformly.  We first bound
+the expected excess at the port $(S,i)$.
+Any competing instance at this port has partner $j'$ from the same
+bundle as $i$, with $R_{j'}\cap R_i=\varnothing$.  A specified partner
+determines at most one instance at row $S$.  Put
+$t=|R_{j'}\cap R_j|$.  For a specified trace $T\subseteq R_j$ of size
+$t>0$, the number of possible partners is at most $h_{q-t}$, by
+Lemma~\ref{odd:lem:spread}; for $t=0$ it is at most $h_q$.
+
+Condition on $S\cap R_i$ and $S\cap R_j$.  The other $\ell-q$ row
+vertices form a uniformly random subset of the $n-2q$ vertices outside
+$R_i\cup R_j$.  If $t<a$, an eligible $j'$ requires at least $a-t$
+vertices of $R_{j'}\setminus R_j$ in this random subset.  Its probability
+is therefore at most
+\begin{equation}\label{odd:eq:contention-probability}
+ \binom{q-t}{a-t}
+ \left(\frac{\ell-q}{n-3q}\right)^{a-t}.
+\end{equation}
+This follows by a union bound over the chosen $a-t$ vertices and the
+falling-factorial probability of including them.  Since $n-3q\geq n/2$,
+the product of \eqref{odd:eq:contention-probability} and the partner bound
+is at most
+\[
+ 2BR^q\,2^q(2\ell)^q
+ \bigl(n^{-(a-t)}+n^{c-d/2}\bigr)
+ \leq4BR^q\,2^q(2\ell)^q.
+\]
+Here the decisive inequality is
+$c=\lceil q/2\rceil\leq(d-1)/2<d/2$.  If $t\geq a$, use probability
+one instead: then $q-t\leq c<d/2$, so $h_{q-t}=BR^{q-t}\leq BR^q$.
+This includes $t=q$, and hence includes repeated residuals.  Sum over at
+most $2^q$ traces and repeat the estimate after exchanging $i,j$.
+Because $S$ was a random endpoint, twice these two expected port excesses
+equal the average summed excess at all four ports of an undirected
+instance.  The resulting bound is
+$16BR^q(8\ell)^q\leq\Xi$.  Averaging over the one or two possible
+intersection patterns does not change the estimate.  This proves
+\eqref{odd:eq:pair-contention}.
+
+Write $W_p=\sum_{f\text{ of }p}w_f$.  Cauchy--Schwarz gives
+\[
+ W_p\geq\frac{T_q^2}{\sum_{f\text{ of }p}\delta_f}
+ \geq\frac{T_q}{1+\Xi}.
+\]
+Take $\beta=\min_pW_p$ and set
+$\widetilde w_f=(\beta/W_p)w_f$ for each instance of $p$.
+The weights decrease and have exactly the required pair sums.
+
+To verify the dimension bound, use
+\[
+ \frac{\binom{n-2q}{\ell-q}}{\binom n\ell}
+ =\frac{(\ell)_q(n-\ell)_q}{(n)_{2q}}
+ \geq\left(\frac{\ell}{4n}\right)^q.
+\]
+The lower bound holds because $\ell\geq2q$ and
+$n-\ell-q\geq n/2$.  The coefficient multiplying this ratio in
+\eqref{odd:eq:instance-count} is at least $1/2$.  Thus
+$N/\beta\leq2(1+\Xi)(4n/\ell)^q\leq K_0n^q$, since $\ell\geq6$.
+Finally $h\geq\max\{1,n^{q-d/2}\}$ gives the second inequality in
+\eqref{odd:eq:beta-estimate}.
+\end{proof}
+
+We freeze $\beta$ and all the equalized weights.  Every subsequent deletion
+removes an entire original pair and all of its instances.  It changes no
+other pair weight.  Thus both equalization and port capacity survive every
+iteration.
+
+\subsection{The comparison after pair deletion}
+
+Let $E$ be any remaining collection of disjoint within-bundle pairs.  Let
+$\mathcal T$ be any edge-disjoint family of forests whose edges, together
+with $E$, partition the initial disjoint pairs.  These are forests on
+original clause labels; different forests may share labels.  Define
+\[
+ Q_T(b,x)=\sum_{\{i,j\}\in T}a_i a_jb_i b_j
+                         \chi_{R_i\triangle R_j}(x),
+ \qquad
+ P_q(b,x)=\sum_{\mathcal B}\chi_{C_{\mathcal B}}(x)
+                       \sum_{i\in\mathcal B}a_i b_i\chi_{R_i}(x).
+\]
+Let $A_b$ be the symmetric matrix that assigns weight
+$\widetilde w_f a_i a_jb_i b_j$ to each surviving instance of $\{i,j\}$.
+Let $A_+$ use weight $\widetilde w_f$, ignoring the coefficients as well
+as the signs.  For $E\ne\varnothing$, put
+\begin{equation}\label{odd:eq:normalization}
+ d(S)=\sum_{S'}A_+[S,S'],\qquad
+ \overline d=\frac{2\beta|E|}{N},\qquad
+ \Gamma=\operatorname{diag}(d(S))+\overline d I,\qquad
+ K_b=\Gamma^{-1/2}A_b\Gamma^{-1/2}.
+\end{equation}
+
+\begin{lemma}[Comparison with the original level polynomial]
+\label{odd:lem:comparison}
+With the preceding notation,
+\begin{equation}\label{odd:eq:comparison}
+ \frac{\sup_x|P_q(b,x)|^2}{M_q^2}
+ \leq\frac1h+\eta_{\mathrm{ov}}
+   +\frac{2}{M_qh}\sum_{T\in\mathcal T}\sup_x|Q_T(b,x)|
+   +2\|K_b\|.
+\end{equation}
+The last term may instead be replaced by $2|E|/(M_qh)$, including the
+case $E=\varnothing$ without forming a normalized matrix.
+\end{lemma}
+
+\begin{proof}
+For the row vector $z(x)_S=\chi_S(x)$, equalization gives the exact identity
+\begin{equation}\label{odd:eq:polynomial-identity}
+ z(x)^{\mathsf T}A_bz(x)
+ =2\beta\sum_{\{i,j\}\in E}a_i a_jb_i b_j
+                                      \chi_{R_i\triangle R_j}(x).
+\end{equation}
+Let $O$ denote the initial overlapping pairs.  Apply Cauchy--Schwarz once,
+using the original $H$ bundles, to obtain
+\begin{align*}
+ |P_q(b,x)|^2
+ &\leq H\sum_{\mathcal B}
+              \left(\sum_{i\in\mathcal B}a_i b_i\chi_{R_i}(x)\right)^2\\
+ &=H\sum_i a_i^2
+   +2H\sum_{\{i,j\}\in O}a_i a_jb_i b_j\chi_{R_i\triangle R_j}(x)
+   +2H\sum_{T\in\mathcal T}Q_T(b,x)
+   +\frac H\beta z(x)^{\mathsf T}A_bz(x).
+\end{align*}
+The first term is at most $HM_q=M_q^2/h$.  By
+\eqref{odd:eq:overlap}, $|O|\leq\eta_{\mathrm{ov}}M_qh/2$.
+Moreover,
+\[
+ |z(x)^{\mathsf T}A_bz(x)|
+ \leq\|K_b\|\,z(x)^{\mathsf T}\Gamma z(x)
+ =4\beta|E|\|K_b\|.
+\]
+Use $|E|\leq H\binom h2\leq M_qh/2$ and divide by $M_q^2$.
+Paying each surviving pair by one gives the alternate last term directly.
+In particular, the number of deleted forests does not affect the
+Cauchy--Schwarz factor or create additional diagonal terms.
+\end{proof}
+
+We will stop a level if its current average degree is small.  For any
+threshold $d_*>0$, \eqref{odd:eq:beta-estimate} gives
+\begin{equation}\label{odd:eq:low-degree}
+ \overline d<d_*\quad\Longrightarrow\quad
+ \frac{2|E|}{M_qh}
+ =\frac{N\overline d}{\beta M_qh}
+ \leq K_0d_*\frac{n^{d/2}}{M_q}.
+\end{equation}
+Thus it suffices to retain only levels with a sufficiently large original
+count $M_q$; there are at most $d-1$ other positive levels to discard.
+
+\subsection{A fractional window condition and the memory lift}
+
+For a set $U\subseteq[n]$, take the graph on labels whose edges are the
+surviving pairs $\{i,j\}$ with $R_i,R_j\subseteq U$.  At capacity $D$,
+call $U$ \emph{good} if the following linear system is feasible:
+\begin{equation}\label{odd:eq:window-lp}
+ \lambda_{i,v}\geq0\quad(v\in R_i),\qquad
+ t_i:=\sum_{v\in R_i}\lambda_{i,v},\qquad
+ \sum_i\lambda_{i,v}\leq D\quad(v\in U),\qquad
+ t_i+t_j\geq1\quad(\{i,j\}\in E[U]).
+\end{equation}
+One may impose $t_i\leq1$ by truncating each larger vector proportionally;
+this preserves all pair inequalities and decreases all vertex loads.
+Testing goodness is a rational linear program of polynomial size.
+
+The original-sign parity lift has states $(S,\mu)$, where
+$S\in\Omega$ and $\mu\subseteq[M]$ records the active original labels.
+An instance of pair $\{i,j\}$ changes the state by
+\[
+ (S,\mu)\longleftrightarrow
+ (S\triangle R_i\triangle R_j,\,\mu\triangle\{i,j\}).
+\]
+Its unnormalized weight is $\widetilde w_f$, and its normalized weight
+divides this by $\sqrt{\Gamma(S)\Gamma(S')}$.
+Associate to a state its residual window
+\[
+ W(S,\mu)=S\cup\bigcup_{i\in\mu}R_i.
+\]
+An empty-memory closed walk of length $2s$ has at most
+$\min\{2j,2(2s-j)\}\leq2s$ active labels after $j$ steps.  All its
+windows therefore have size at most
+\begin{equation}\label{odd:eq:window-size}
+ L=\ell+2ds.
+\end{equation}
+
+\begin{lemma}[Norm on good windows]\label{odd:lem:good-norm}
+Restrict the normalized parity lift to states with $|\mu|\leq2s$ and
+good windows.  Its adjacency operator $\mathcal L_{\mathrm{good}}$ satisfies
+\begin{equation}\label{odd:eq:good-norm}
+ \|\mathcal L_{\mathrm{good}}\|
+ \leq2\sqrt{\frac{(D+1)\ell}{\overline d}}.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Fix one feasible solution to \eqref{odd:eq:window-lp} for each good
+window.  These solutions are used only to prove the bound; the algorithm
+does not enumerate all windows.  We split and orient each lifted edge
+so that the total incoming unnormalized weight is at most $(D+1)\ell$.
+
+First consider an edge whose two endpoint windows equal $U$, with pair
+$\{i,j\}$.  Both residuals lie in $U$.  Split its weight among vertices
+of these two residuals in fractions
+\[
+ \frac{\lambda_{i,v}}{t_i+t_j}\quad(v\in R_i),\qquad
+ \frac{\lambda_{j,v}}{t_i+t_j}\quad(v\in R_j).
+\]
+The fractions sum to one.  Since the residuals are disjoint and their
+union is $S\triangle S'$, each chosen vertex belongs to exactly one
+endpoint row.  Orient the corresponding piece toward that row.
+At a fixed state with row $S$, the incoming weight witnessed by $v\in S$
+is at most $\sum_i\lambda_{i,v}\leq D$: for a fixed $i$ the relevant
+instances use the port $(S,i)$, whose total weight is at most one, and
+$t_i+t_j\geq1$.  Thus equal-window edges contribute at most $D\ell$.
+
+For an unequal-window edge, choose an endpoint $x=(S,\mu)$ whose window
+contains a vertex absent from the other endpoint's window, breaking ties
+deterministically.  Orient toward $x$ and choose such a vertex $v$ as
+witness.  Write the other endpoint as $y=(S',\mu')$.  The witness belongs
+to the residual of exactly one toggled label, say $i$, because the two
+residuals are disjoint.  It belongs to $S$: otherwise the row toggle
+would put it in $S'\subseteq W(y)$.  Label $i$ was entered, since a
+removed label would put its residual in $W(y)$.  Furthermore, $i$ is the
+unique label in $\mu$ whose residual contains $v$.  Any other such label
+would either remain in $\mu'$ or be the other toggled label, and both
+possibilities contradict the choice of $v$.  Thus $(x,v)$ determines
+$i$, and all incoming edges with witness $v$ use the port $(S,i)$.
+They have total weight at most one.  There are at most $\ell$ witnesses.
+This is the unequal-window witness argument of
+\cite[Section~3.3]{SH26Moore}, applied to labeled residuals.
+
+The lifted degree at a state with row $S$ is at most $d(S)$.
+Lemma~\ref{lem:orientation}, with normalization
+$\Gamma(S)=d(S)+\overline d$, now gives
+\eqref{odd:eq:good-norm}.  Fractionally splitting an edge is harmless for
+that lemma: each piece has nonnegative weight and the pieces sum to the
+original edge.
+\end{proof}
+
+If $U$ is not good, Lemma~\ref{lem:forest-alternative} constructs a
+forest $T$ of surviving pairs and its residual union $U_T\subseteq U$
+such that
+\begin{equation}\label{odd:eq:dense-forest}
+ |T|>D|U_T|.
+\end{equation}
+All residuals are nonempty because $q>0$.  This alternative applies to
+the current pair graph, with no requirement that it remain a union of
+bundle cliques.  It is the reason whole-pair deletion can be repeated.
+
+\subsection{Deterministic decomposition by a trace test}
+
+Set
+\begin{equation}\label{odd:eq:trace-constants}
+ \begin{gathered}
+ \sigma=\frac{e^2}{64},\qquad \zeta=\frac{e^2}{128},\qquad
+ D=\lceil32\sigma^{-2}\rceil,\\
+ s=\lceil\log_2(128N)\rceil,\qquad
+ \beta_0=\zeta^{2s},\qquad
+ d_* =\frac{16(D+1)\ell}{\zeta^2}.
+ \end{gathered}
+\end{equation}
+Here $\beta_0$ is a trace threshold, distinct from the common pair mass
+$\beta$.  Set the positive rational bias parameter to
+\begin{equation}\label{odd:eq:bias}
+ \eta=\min\left\{
+ \frac{\beta_0}{512N},\
+ \frac{\sigma^{2(L+1)}}{8\cdot2^L},\
+ \frac{e^2}{8}\right\},\qquad L=\ell+2ds.
+\end{equation}
+For fixed $d,e$, its reciprocal is polynomial in $n$.
+Finally set
+\begin{equation}\label{odd:eq:retained-threshold}
+ A=\left\lceil\frac{64K_0d_*}{e^2}\right\rceil
+\end{equation}
+and retain a positive level only if $M_q\geq An^{d/2}$.  By
+\eqref{odd:eq:low-degree}, a low-degree stop on a retained level costs
+at most $e^2/64$ in the squared comparison.
+
+Fix one explicit fully $\eta$-biased distribution $\mathcal Q_0$ on the
+original $M$ signs, using Lemma~\ref{lem:small-bias}.  On each retained
+level start with all its disjoint pairs and repeat:
+\begin{enumerate}
+\item If $E=\varnothing$ or $\overline d<d_*$, stop and use the direct
+      pair-count bound.
+\item Form the normalized matrix $K_b^{(0)}$ using instance weights
+      $\widetilde w_fb_ib_j$, without the $a_i a_j$ coefficients.  If
+      \begin{equation}\label{odd:eq:trace-stop}
+       \E_{b\sim\mathcal Q_0}\operatorname{tr}
+                   (K_b^{(0)})^{2s}\leq\beta_0/32,
+      \end{equation}
+      stop and retain this trace test.
+\item Otherwise find a failed window, extract a forest by
+      \eqref{odd:eq:dense-forest}, save that forest, delete all its
+      pairs and their instances, and repeat.
+\end{enumerate}
+
+We next justify constructively the third step.  The matrix
+$P_b=\Gamma^{-1}A_b^{(0)}$ is similar to $K_b^{(0)}$, so its traces are
+identical and rational.  Every Fourier coefficient in an entry of
+$P_b^j$ is nonnegative.  Its coefficient mass is at most one, because
+the unsigned matrix $P_+=\Gamma^{-1}A_+$ has row sums at most one.
+Likewise the nonnegative Fourier coefficient mass of
+$\operatorname{tr}(K_b^{(0)})^{2s}$ is
+$\operatorname{tr}(P_+^{2s})\leq N$.  Small-bias transfer therefore changes
+its expectation by at most $\eta N$.
+
+Under uniform original signs, the surviving trace terms are precisely
+the empty-memory closed walks of length $2s$.  Failure of
+\eqref{odd:eq:trace-stop} implies that their total mass is greater than
+\[
+ \beta_0/32-\eta N\geq15\beta_0/512.
+\]
+Since $\overline d\geq d_*$, Lemma~\ref{odd:lem:good-norm} bounds the
+mass of those walks staying in good states by
+\[
+ N\|\mathcal L_{\mathrm{good}}\|^{2s}
+ \leq N(\zeta^2/4)^s
+ =\beta_0 N4^{-s}\leq\beta_0/512.
+\]
+Here there are $N$ empty-memory starting rows, and their length-$2s$
+diagonal entries are individually bounded by the operator norm to that
+power.  If a starting window itself is bad, walks starting there simply
+belong to the bad part.  Thus the total mass of bad empty-memory closed
+walks is greater than $\delta:=\beta_0/64$.
+
+Apply Theorem~\ref{thm:extraction} to the substochastic matrix $P_b$,
+with the test \eqref{odd:eq:window-lp} on recovered memories.  It recovers
+a bad state using threshold
+\begin{equation}\label{odd:eq:extraction-threshold}
+ \tau=\frac{\delta}{2N(2s+1)}.
+\end{equation}
+Only memories with at most $2s$ labels are tested, as permitted by the
+empty-memory closed-walk bound.  Every returned window therefore obeys
+$|U|\leq L$.  Its inverse threshold is polynomial in $n$, so this step
+is deterministic and polynomial time.  Lemma~\ref{lem:forest-alternative}
+then supplies the desired forest.  Each iteration removes at least one
+original pair, and there are at most $H\binom h2\leq M_qh/2$ initial
+pairs.  The process terminates after polynomially many iterations.
+
+The stopping test also controls arbitrary coefficients and any final
+small-biased distribution.  Write $K_b^{(a)}$ for the normalized matrix
+with the actual $a_i a_j$ coefficients.  In a uniform-sign trace
+expansion, every surviving term contains each original label an even
+number of times.  Its coefficient factor has the form
+$\prod_i a_i^{2r_i}\in[0,1]$.  Consequently
+\[
+ \E_{\mathrm{unif}}\operatorname{tr}(K_b^{(a)})^{2s}
+ \leq\E_{\mathrm{unif}}\operatorname{tr}(K_b^{(0)})^{2s}.
+\]
+The absolute Fourier coefficient mass of the actual trace is at most
+$N$, by domination by the unsigned path expansion.  For every fully
+$\eta$-biased $\mathcal Q$, a trace stop thus implies
+\begin{equation}\label{odd:eq:actual-trace}
+ \E_{b\sim\mathcal Q}\operatorname{tr}(K_b^{(a)})^{2s}
+ \leq\frac{\beta_0}{32}+2\eta N<\frac{\beta_0}{8}.
+\end{equation}
+This comparison treats negative and zero coefficients without changing
+the pair weights, the density test, or the decomposition.
+
+\subsection{Rational certificates and the final expectation}
+
+For each extracted forest $T$, let $m_T=|T|$ and $u=|U_T|\leq L$.
+The products $b_ib_j$ on its edges are independent uniform signs under
+uniform original signs.  Lemma~\ref{lem:forest-certificate} applies to
+$Q_T$ with the parameters in \eqref{odd:eq:trace-constants} and
+\eqref{odd:eq:bias}.  Explicitly, its rational potential and certificate
+are
+\begin{equation}\label{odd:eq:forest-certificate}
+ p_T=2(u+1),\qquad
+ \Phi_T(b)=\sum_{x\in\{\pm1\}^{U_T}}
+          \left(\frac{Q_T(b,x)}{\sigma m_T}\right)^{p_T},\qquad
+ C_T(b)=\sigma m_T R_{p_T}(\Phi_T(b)),
+\end{equation}
+where $R_p$ is the rational envelope in \eqref{eq:young-envelope}.
+They satisfy, pointwise and for every fully $\eta$-biased $\mathcal Q$,
+\begin{equation}\label{odd:eq:forest-expectation}
+ C_T(b)\geq\sup_x|Q_T(b,x)|,\qquad
+ \E_{\mathcal Q}C_T(b)\leq\sigma m_T.
+\end{equation}
+The degree condition $m_T>Du$ is exactly
+\eqref{odd:eq:dense-forest}; different forests may reuse original
+labels, and \eqref{odd:eq:forest-expectation} does not assume independence
+between different forests.
+
+At a trace stop define
+\begin{equation}\label{odd:eq:matrix-certificate}
+ \Psi_q(b)=\frac{\operatorname{tr}(K_b^{(a)})^{2s}}{\zeta^{2s}},
+ \qquad C_{K,q}(b)=\zeta R_{2s}(\Psi_q(b)).
+\end{equation}
+The matrix is real symmetric, so its even trace is nonnegative and
+dominates its operator norm to the power $2s$.  The envelope and
+\eqref{odd:eq:actual-trace} give
+\begin{equation}\label{odd:eq:matrix-expectation}
+ C_{K,q}(b)\geq\|K_b^{(a)}\|,\qquad
+ \E_{\mathcal Q}C_{K,q}(b)\leq\zeta.
+\end{equation}
+The trace can be computed as
+$\operatorname{tr}(\Gamma^{-1}A_b)^{2s}$; no irrational square roots
+are required in the algorithm.
+
+In \eqref{odd:eq:comparison}, replace each forest maximum by $C_T$.
+Use $2C_{K,q}$ at a trace stop, and $2|E|/(M_qh)$ at a low-degree stop.
+Call the resulting rational bound $B_q(b)$.  Because the deleted forests
+are edge-disjoint,
+\[
+ \sum_{T\in\mathcal T}m_T\leq M_qh/2.
+\]
+Together with \eqref{odd:eq:overlap},
+\eqref{odd:eq:retained-threshold}, and
+\eqref{odd:eq:forest-expectation}--\eqref{odd:eq:matrix-expectation},
+this gives
+\begin{equation}\label{odd:eq:squared-budget}
+ \E_{\mathcal Q} B_q
+ \leq\frac{e^2}{64}+\frac{e^2}{64}+\sigma+
+                      \frac{e^2}{64}
+ =\frac{e^2}{16}.
+\end{equation}
+The four terms pay respectively for the original diagonal, overlapping
+pairs, all deleted forests, and the final remainder.  The last term is
+valid for both kinds of stop, since $2\zeta=e^2/64$.
+
+Using the square-root envelope \eqref{eq:sqrt-envelope}, define
+\begin{equation}\label{odd:eq:level-certificate}
+ \mathcal C_q(b)=M_q\left(\frac e2+\frac{B_q(b)}{2e}\right).
+\end{equation}
+It is pointwise at least $\sup_x|P_q(b,x)|$, and
+\begin{equation}\label{odd:eq:level-expectation}
+ \E_{\mathcal Q}\mathcal C_q
+ \leq\frac{17}{32}eM_q<eM_q.
+\end{equation}
+This uses an aggregate expectation for all forests rather than a union
+bound over the number of extractions.
+
+For a level-zero bundle $\mathcal B$, put
+$V_{\mathcal B}(b)=\sum_{i\in\mathcal B}a_i b_i$.  Its maximum absolute
+contribution is exactly $|V_{\mathcal B}(b)|$.  Use
+\[
+ \Phi_{\mathcal B}(b)=\left(\frac{V_{\mathcal B}(b)}{eB}\right)^2,
+ \qquad
+ C_{\mathcal B}(b)=eB R_2(\Phi_{\mathcal B}(b)).
+\]
+Its pointwise soundness follows from the envelope, and small bias gives
+\[
+ \E_{\mathcal Q}\Phi_{\mathcal B}
+ \leq\frac{B+\eta B^2}{e^2B^2}
+ \leq\frac1{64}+\frac18<\frac14.
+\]
+Hence $\E_{\mathcal Q}C_{\mathcal B}\leq eB$.
+
+Let $M_{\mathrm{err}}$ be the total number of unbundled labels and labels
+in discarded positive levels.  Equations~\eqref{odd:eq:unbundled} and
+\eqref{odd:eq:retained-threshold} imply
+\[
+ M_{\mathrm{err}}\leq\bigl(U_0+(d-1)A\bigr)n^{d/2}.
+\]
+Choose
+\begin{equation}\label{odd:eq:final-density-constant}
+ C_{d,\epsilon}\geq
+ \max\left\{
+ \frac{U_0+(d-1)A}{e},\
+ 16e^{-2}(n_0+1)\right\}.
+\end{equation}
+Then $M_{\mathrm{err}}\leq eM$.  Sum its trivial count, all level-zero
+certificates, and all retained level certificates to define $\mathcal C$.
+The triangle inequality gives pointwise soundness, and the preceding
+expectations give
+\[
+ \E_{\mathcal Q}\mathcal C
+ \leq M_{\mathrm{err}}+e\sum_{q=0}^{d-1}M_q
+ \leq2eM=\epsilon M/2.
+\]
+All terms are evaluated on the same original sign vector.  In particular,
+the argument permits adding certificates constructed independently for
+different Fourier layers.
+
+\paragraph{Small input lengths.}
+If $n<n_0$, use the original polynomial
+$P(b,x)=\sum_i a_i b_i\chi_{F_i}(x)$ directly.  Set
+\[
+ p=2(n+1),\qquad
+ \Phi(b)=\sum_{x\in\{\pm1\}^n}
+                   \left(\frac{P(b,x)}{eM}\right)^p,
+ \qquad
+ \eta=\frac{e^{2(n+1)}}{8\cdot2^n},
+ \qquad \mathcal C(b)=eM R_p(\Phi(b)).
+\]
+The density choice \eqref{odd:eq:final-density-constant} ensures
+$M\geq16e^{-2}(n+1)$.  By Lemma~\ref{lem:moment},
+\[
+ \E_{\mathrm{unif}}\Phi
+ \leq2^n\left(\frac{2(n+1)}{e^2M}\right)^{n+1}
+ \leq2^n8^{-(n+1)}\leq\frac18.
+\]
+The absolute Fourier coefficient mass of $\Phi$ is at most
+$2^ne^{-p}$, so the displayed bias bounds the transfer error by $1/8$.
+Thus $\E_{\mathcal Q}\Phi\leq1/4$ and
+$\E_{\mathcal Q}\mathcal C\leq eM<\epsilon M/2$.
+Pointwise soundness again follows from the even moment and its rational
+envelope.  Enumerating $2^n$ inputs has constant cost depending on
+$d,\epsilon$ in this branch; it does not enumerate the $2^M$ signings.
+
+\paragraph{Bit complexity.}
+At fixed $d,\epsilon$, there are polynomially many bundles, pairs, rows,
+and pair instances.  All initial port loads are integers of polynomial
+size.  The rational sums $W_p$ and the equalized weights therefore have
+polynomial bit length.  They are frozen during the deletion loop, so
+successive iterations do not recursively compound their denominators.
+Each trace uses a rational matrix power of order $O(\log n)$; each local
+certificate enumerates $2^{O(\log n)}$ assignments and uses moments of
+order $O(\log n)$.  The explicit small-biased spaces, recovered memory
+lists, rational linear programs, and forest extractions all have
+polynomial size.  Integer square-root comparisons compute the ceilings
+in \eqref{odd:eq:bundle-thresholds} exactly.  These observations establish
+the construction and evaluation claims in Theorem~\ref{thm:odd-signing}.
+
+% End odd
+
+
+% Begin avoidance
+\section{From Signing Certificates to Range Avoidance}
+\label{sec:avoidance}
+
+We first assemble the degree-$d$ certificate, including the conversion
+from coefficient mass to label count. We then apply the Fourier
+reduction of Guruswami, Lyu, and Yuan~\cite[Section~6.1]{GLY26}.
+The proof selects one sign vector for all Fourier layers.
+
+\subsection{The Signing Theorem and the Elementary Degrees}
+
+\begin{proof}[Proof of \Cref{thm:signing}]
+For odd $d\ge3$, apply \Cref{thm:odd-signing}.
+Suppose $d$ is even, and write $W=\sum_i|a_i|\le M$.
+If $W\le\epsilon M/2$, the constant certificate
+$\mathcal C(b)=W$ has both required properties; one may choose any
+rational $\eta\in(0,1)$. Otherwise $W>\epsilon M/2$.
+Let $C^{\mathrm{wt}}_{d,\epsilon}$ denote a sufficient density
+constant in \Cref{thm:even-weight}. Choose the label-count constant
+so that
+\[
+ C_{d,\epsilon}\ge(2/\epsilon)C^{\mathrm{wt}}_{d,\epsilon}.
+\]
+The density hypothesis then gives
+$W>C^{\mathrm{wt}}_{d,\epsilon}n^{d/2}$. The even-degree theorem
+constructs a certificate with
+\[
+ \E\mathcal C(b)\le\frac{41}{128}\epsilon W
+ \le\frac{41}{128}\epsilon M<\epsilon M/2.
+\]
+Its pointwise guarantee and bit complexity are exactly those needed.
+The bias parameter in either case can be decreased, if necessary, to
+a rational inverse-polynomial value shared with other systems.
+\end{proof}
+
+The degrees zero and one need a different density scale from
+$n^{d/2}$. Their certificates are elementary.
+
+\begin{lemma}[Degree zero and degree one]
+\label{lem:elementary-degrees}
+Let $n\ge1$, let $a_i\in\Q\cap[-1,1]$, and suppose either
+all $F_i$ are singletons or all $F_i$ are empty. Define
+\begin{equation}
+ \mathcal C_1(b)=\sum_{v=1}^n
+       \abs{\sum_{i:F_i=\{v\}}a_ib_i},
+ \qquad
+ \mathcal C_0(b)=\abs{\sum_i a_ib_i},
+ \label{eq:elementary-certificates}
+\end{equation}
+in the respective cases. These are exact certificates for the
+maximum absolute value. Under every fully $\eta$-biased
+distribution,
+\begin{equation}
+ \E\mathcal C_1\le\sqrt{nM}+\sqrt\eta M,
+ \qquad
+ \E\mathcal C_0\le\sqrt M+\sqrt\eta M.
+ \label{eq:elementary-expectation}
+\end{equation}
+In particular, if $M\ge16\epsilon^{-2}n$ and
+$\eta\le\epsilon^2/16$, either expectation is at most
+$\epsilon M/2$.
+\end{lemma}
+\begin{proof}
+For degree one, each variable can be chosen to align with its grouped
+coefficient, proving exactness. The degree-zero assertion is immediate.
+For a group $I$ of original labels, small bias bounds its second
+moment by
+\[
+ \E\left(\sum_{i\in I}a_ib_i\right)^2
+ \le\sum_{i\in I}a_i^2+
+       \eta\left(\sum_{i\in I}|a_i|\right)^2.
+\]
+Apply Cauchy--Schwarz, the inequality $\sqrt{A+B}\le\sqrt A+\sqrt B$,
+and then Cauchy--Schwarz across at most $n$ disjoint groups.
+Since $\sum_i a_i^2\le M$ and $\sum_i|a_i|\le M$, this gives
+Eqn.~\eqref{eq:elementary-expectation}. The stated parameters make
+each of its two summands at most $\epsilon M/4$.
+\end{proof}
+
+\subsection{Removing Parities and the Top Fourier Term}
+
+\begin{lemma}[The Fourier gap]
+\label{lem:fourier-gap}
+Fix $k\ge3$ and put $\delta=2^{1-k}$. Let
+$g:\{\pm1\}^k\to\{\pm1\}$ be a Boolean function that is
+not a signed parity. There is a rational multilinear polynomial
+$q$ of degree at most $k-1$ such that
+\begin{equation}
+ |g(x)-q(x)|\le1-\delta\quad\text{for every }x.
+ \label{eq:fourier-gap}
+\end{equation}
+Each coefficient of $q$ has magnitude at most one, and its Fourier
+expansion is computable in $O_k(1)$ time.
+\end{lemma}
+\begin{proof}
+Write $g=\sum_{A\subseteq[k]}\widehat g(A)\chi_A$ and put
+$a=\widehat g([k])$. The sign function $g\chi_{[k]}$ is
+nonconstant: otherwise $g$ would be a signed parity. Its mean
+therefore lies in $[-1+2^{1-k},1-2^{1-k}]$. Taking
+$q=g-a\chi_{[k]}$ proves Eqn.~\eqref{eq:fourier-gap}.
+The remaining claims follow from
+$\widehat g(A)=2^{-k}\sum_xg(x)\chi_A(x)$.
+\end{proof}
+
+If a coordinate depends on fewer than $k$ inputs and $n\ge k$,
+pad its neighborhood to $k$ distinct variables and extend its truth
+table by ignoring the added variables. This preserves the function.
+It permits every coordinate to use the same set of local-position
+labels $[k]$, even when their neighborhoods differ.
+
+\begin{proof}[Proof of \Cref{thm:avoid}]
+Increase $C_k$ so that the promise implies $m>n$. If $n<k$,
+enumerate all $2^n$ inputs and their images. A missing string can
+be found among the first $2^n+1$ strings of length $m$, in time
+$O_k(m)$ with a suitable dictionary. Thus assume $n\ge k$.
+
+Identify every coordinate that is a signed parity; constant
+coordinates are included as parities of the empty set.
+Suppose there are $p>n$ such coordinates, written as
+$f_i(x)=s_i\chi_{T_i}(x)$, $s_i\in\{\pm1\}$. Their incidence
+vectors have a nontrivial binary dependency $\lambda\in\F_2^p$.
+Consequently every output of this submap satisfies
+\[
+ \prod_{i:\lambda_i=1}f_i(x)
+ =\prod_{i:\lambda_i=1}s_i.
+\]
+Choose target signs violating this equality and extend them arbitrarily
+to the other outputs. Binary linear algebra finds the dependency and
+the violating target in polynomial time.
+
+Otherwise discard these $p\le n$ coordinates and retain $M=m-p$
+nonparity outputs. Pad and order each remaining input neighborhood as
+$v_{i,1},\ldots,v_{i,k}$. Apply \Cref{lem:fourier-gap} to obtain
+\begin{equation}
+ f_i(x)=\widehat f_i([k])\chi_{\{v_{i,1},\ldots,v_{i,k}\}}(x)
+            +q_i(x),\qquad
+ |f_i(x)-q_i(x)|\le1-\delta.
+ \label{eq:coordinate-split}
+\end{equation}
+For every proper subset $A\subsetneq[k]$, define one layer by
+\[
+ F_{i,A}=\{v_{i,j}:j\in A\},\qquad
+ P_A(b,x)=\sum_{i=1}^M\widehat f_i(A)b_i\chi_{F_{i,A}}(x).
+\]
+There are $J=2^k-1$ layers and
+$\sum_i b_iq_i(x)=\sum_{A\subsetneq[k]}P_A(b,x)$.
+Zero Fourier coefficients remain as zero-weight original labels.
+In particular, every layer has exactly $M$ labels on the same
+original sign space.
+
+Set $\epsilon_0=\delta/(4J)$. For $|A|\ge2$, apply
+\Cref{thm:signing} with parameter $\epsilon_0$. For $|A|\le1$,
+use \Cref{lem:elementary-degrees}. Taking $C_k$ sufficiently large
+ensures all density conditions: for $2\le d\le k-1$,
+$n^{d/2}\le n^{(k-1)/2}$, and
+$n\le n^{(k-1)/2}$. The at most $n$ discarded coordinates are
+absorbed by increasing $C_k$ once more.
+
+Let $\eta_*$ be the minimum of the finitely many required bias
+parameters and $\epsilon_0^2/16$. Construct one explicit fully
+$\eta_*$-biased space $\mathcal Q_*$ on the $M$ original output
+signs. Each layer supplies a pointwise certificate $\mathcal C_A$,
+and their sum satisfies
+\begin{equation}
+ \E_{b\sim\mathcal Q_*}\sum_{A\subsetneq[k]}\mathcal C_A(b)
+ \le J\epsilon_0M/2=\delta M/8.
+ \label{eq:joint-layer-budget}
+\end{equation}
+Enumerate this space and select a sign vector whose summed
+certificate is at most $\delta M/8$. In particular,
+\begin{equation}
+ \sup_x\abs{\sum_i b_iq_i(x)}<\delta M.
+ \label{eq:final-separation}
+\end{equation}
+If an input mapped to this target on all retained coordinates, then
+\[
+ \sum_i b_iq_i(x)
+ \ge\sum_i b_if_i(x)-\sum_i|f_i(x)-q_i(x)|
+ \ge M-(1-\delta)M=\delta M,
+\]
+contradicting Eqn.~\eqref{eq:final-separation}.
+Extend $b$ arbitrarily to the discarded positions and convert back
+to bits. The resulting string is outside the full range.
+
+All truth-table operations have constant cost per coordinate for
+fixed $k$. The number of layers is constant. Each certificate is
+constructed and evaluated in polynomial bit complexity, and
+$\eta_*^{-1}$ is polynomial. Enumeration of $\mathcal Q_*$ is
+therefore polynomial in the explicit input length. This proves
+the deterministic running-time bound.
+\end{proof}
+
+For clarity, the algorithm implemented by the proof is the following.
+\begin{enumerate}
+\item Handle bounded input size by exhaustive input evaluation.
+Identify signed-parity coordinates and, if there are more than $n$,
+return a target violating one binary dependency.
+\item Discard the remaining signed parities, pad each neighborhood
+to $k$ distinct inputs, and compute the proper Fourier layers.
+\item Construct the degree-zero and degree-one certificates directly.
+For even higher degrees, repeatedly remove a dense window after a
+failed averaged trace test. For odd degrees, construct equalized
+pair matrices and repeatedly remove the dense forests supplied by
+failed window LPs. Retain every resulting local and remainder
+certificate.
+\item Enumerate a single sufficiently small-biased space on the
+original output signs. Return a vector passing the summed
+certificate test in Eqn.~\eqref{eq:joint-layer-budget}, extended
+arbitrarily on discarded coordinates.
+\end{enumerate}
+Every branch uses exact rational tests. The algorithm does not need
+to certify the local capacity condition on all small windows at a
+stopping point: the averaged trace test itself is the remainder
+certificate used in the proof.
+
+% End avoidance
+
+
+% Begin hierarchy
+\section{The Hierarchy Tradeoff}\label{sec:hierarchy}
+
+We now allow the matrix level to grow with $n$ and prove
+\Cref{thm:hierarchy-avoid}. For $d\geq2$ and $1\leq\ell\leq n$, define
+\begin{equation}\label{hierarchy:scale}
+ \mu_d(n,\ell)=n\left(\frac n\ell\right)^{d/2-1}
+              =\ell\left(\frac n\ell\right)^{d/2}.
+\end{equation}
+The role of the level is to increase the average matrix degree produced
+by each original term. The local capacity and cancellation parameters
+remain constants depending only on $d$ and the desired margin.
+
+\begin{proposition}\label{hierarchy:signing}
+Fix $d\geq2$ and rational $0<\epsilon<1$. The certificate conclusion
+of \Cref{thm:signing} holds under the density hypothesis
+$M\geq C_{d,\epsilon}\mu_d(n,\ell)$, with construction, evaluation,
+and inverse bias bounded by
+\begin{equation}\label{hierarchy:cost}
+ \poly(\text{input})
+ \left(\frac{\mathrm e n}{\ell}\right)^{O_{d,\epsilon}(\ell)}.
+\end{equation}
+The expectation guarantee continues to hold for every final distribution
+with the specified full bias.
+\end{proposition}
+
+\subsection{The central range}
+
+Assume first that $2d\leq\ell$ and $n\geq100d\ell$, and write
+$v=n/\ell$ and $N=\binom n\ell$. For $1\leq q\leq d$, the exact
+slice ratio is
+\begin{equation}\label{hierarchy:slice-ratio}
+ \frac{\binom{n-2q}{\ell-q}}{\binom n\ell}
+ =\frac{(\ell)_q(n-\ell)_q}{(n)_{2q}}
+ =\Theta_d\bigl((\ell/n)^q\bigr),
+\end{equation}
+where $(a)_q=a(a-1)\cdots(a-q+1)$.
+The constants are independent of $\ell$: the numerator factors are
+bounded below by $(\ell/2)^q(n/2)^q$ and above by $\ell^q n^q$,
+and $(n/2)^{2q}\leq(n)_{2q}\leq n^{2q}$.
+
+\paragraph{Even degree.}
+Suppose $d=2r$. Use the padded level-$\ell$ Kikuchi graph: a clause
+$F_i$ joins $S$ and $S\triangle F_i$ whenever $\abs{S\cap F_i}=r$.
+The number of ordered instances per original clause is now
+\[
+ c_{d,\ell}=\binom dr\binom{n-d}{\ell-r}.
+\]
+Thus $\overline d=c_{d,\ell}W_R/N$, and the comparison identities in
+Eqn.~\eqref{even:comparison} hold with $c_{d,\ell}$ in place of $c$.
+Each label still determines at most one neighbor of a given row, so
+the weighted Hall allocation and orientation proof is unchanged.
+Its incoming capacity is $(D+1)\ell$.
+
+By Eqn.~\eqref{hierarchy:slice-ratio},
+$N/c_{d,\ell}=\Theta_d(v^{d/2})$. The sufficient weighted density
+condition from Eqn.~\eqref{even:density} therefore has the form
+\[
+ W\geq C'_{d,\epsilon}\ell\frac{N}{c_{d,\ell}}.
+\]
+It is implied by $W\geq C_{d,\epsilon}\mu_d(n,\ell)$ for a sufficiently
+large constant. With this replacement,
+the deterministic decomposition, dense-block moments, and spectral
+certificate from \Cref{sec:even} apply verbatim.
+To convert weighted density into label-count density, return the
+constant certificate $W$ if $W\leq\epsilon M/2$.
+Otherwise $W>\epsilon M/2$, and a sufficiently large constant in
+$M\geq C_{d,\epsilon}\mu_d(n,\ell)$ ensures the weighted hypothesis.
+The weighted certificate then has expectation at most
+$(41/128)\epsilon W\leq\epsilon M/2$.
+
+\paragraph{Odd degree.}
+Suppose $d\geq3$ is odd. Retain the constants $B,R$ and the
+cancellation budgets of \Cref{sec:odd}, and replace the bundle
+thresholds by
+\begin{equation}\label{hierarchy:bundles}
+ h_q=\left\lceil BR^q
+          \max\{1,v^{q-d/2}\}\right\rceil,
+ \qquad 0\leq q\leq d-1.
+\end{equation}
+The packing proof uses only the exhaustion of earlier stages and
+$h_{q-1}/h_q\leq2/R$, so its spread and multiplicity conclusions
+continue to hold. The number of unbundled labels is at most
+\begin{equation}\label{hierarchy:unbundled}
+ \frac{nh_{d-1}}d
+ =O_{d,\epsilon}\bigl(nv^{d/2-1}\bigr)
+ =O_{d,\epsilon}\bigl(\mu_d(n,\ell)\bigr).
+\end{equation}
+
+Fix a positive residual size $q$ and put
+$a=\lfloor q/2\rfloor$, $b=\lceil q/2\rceil$.
+Each disjoint original pair has
+\[
+ T_q=\begin{cases}
+ \frac12\binom qa^2\binom{n-2q}{\ell-q},&q\text{ even},\\
+ \binom qa^2\binom{n-2q}{\ell-q},&q\text{ odd}
+ \end{cases}
+\]
+balanced undirected instances. Hence $T_q/N=\Theta_d(v^{-q})$.
+We check that the contention constant remains independent of $\ell$.
+For a competing residual whose intersection with the fixed partner has
+size $t<a$, the eligibility probability is $O_d(v^{-(a-t)})$.
+For each fixed intersection, spread bounds the number of competitors by
+$h_{q-t}$, with $h_q$ used at $t=0$. Their contribution is at most
+\[
+ h_{q-t}O_d(v^{-(a-t)})
+ \leq O_d(BR^q)
+       \bigl(v^{-(a-t)}+v^{b-d/2}\bigr)
+ \leq O_d(BR^q).
+\]
+The last inequality uses $b\leq(d-1)/2<d/2$.
+If $t\geq a$, then $q-t\leq b<d/2$, so $h_{q-t}$ itself is a
+constant depending only on $d,B,R$. This includes $t=q$ and therefore
+also covers repeated residuals. Summing over the constantly many
+intersections and four ports gives a uniform contention bound.
+Exact pair equalization consequently supplies a common pair weight
+$\beta$ with
+\begin{equation}\label{hierarchy:pair-weight}
+ \frac\beta N\geq c_{d,\epsilon}v^{-q}.
+\end{equation}
+
+The good-window orientation still has incoming capacity $(D+1)\ell$.
+Choose the degree stopping threshold $d_*$ to be the same sufficiently
+large constant multiple of $\ell$ used in the trace argument.
+At a level containing $M_q$ original labels, the direct low-degree
+remainder is bounded by
+\begin{align}
+ \frac{Nd_*}{\beta M_qh_q}
+ &\leq\frac{C_{d,\epsilon}\ell v^q}
+                {M_q\max\{1,v^{q-d/2}\}}\notag\\
+ &\leq C_{d,\epsilon}\frac{\ell v^{d/2}}{M_q}
+  =C_{d,\epsilon}\frac{\mu_d(n,\ell)}{M_q}.
+ \label{hierarchy:remainder}
+\end{align}
+Thus a sufficiently large threshold
+$M_q\geq A_{d,\epsilon}\mu_d(n,\ell)$ pays the same fixed squared
+error budget as before. Discarding smaller positive levels costs only
+$O_{d,\epsilon}(\mu_d(n,\ell))$ labels because there are at most
+$d-1$ such levels. Diagonal, overlap, extracted-forest, and scalar-block
+budgets are unchanged. The common-sign certificate assembly of
+\Cref{sec:odd} now gives the asserted expectation after increasing
+$C_{d,\epsilon}$.
+
+\paragraph{Cost of the central constructions.}
+For both parities, choose $s=O_{d,\epsilon}(\log N)$ with the same
+trace thresholds as in the fixed-level proof. Since
+\[
+ \ell\log(n/\ell)\leq\log N
+ \leq\ell\log(\mathrm e n/\ell),
+\]
+and $n/\ell\geq100d$, the memory windows have
+$L=O_d(\ell+ds)=O_{d,\epsilon}(\log N)$ vertices.
+Their assignment enumerations cost $N^{O_{d,\epsilon}(1)}$.
+The trace threshold has inverse polynomial in $N$, as do the
+heavy-memory extraction threshold and the required full bias:
+the normalized traces have Fourier mass at most $N$, and the local
+moment potentials have mass $2^{O_{d,\epsilon}(L)}$.
+All graph dimensions, flow or linear programs, matrix powers, and
+local certificates therefore cost polynomial time in the explicit
+input and $N$. Frozen pair weights and rational arithmetic have
+polynomial bit length in these same parameters. This proves
+Eqn.~\eqref{hierarchy:cost} in the central range.
+
+\subsection{Boundary levels and scalar derandomization}
+
+If $\ell<2d$ and $n\geq200d^2$, run the central construction at
+$\ell'=2d$. Since $d/2-1\geq0$,
+$\mu_d(n,\ell')\leq\mu_d(n,\ell)$, so its density requirement is
+met. Its polynomial running time fits Eqn.~\eqref{hierarchy:cost}.
+
+If $n<100d\ell$, use the whole-input scalar certificate of
+\Cref{lem:scalar}, with $u=n$ and $e=\epsilon/2$.
+The required $M\geq16e^{-2}(n+1)$ follows from
+$M\geq C_{d,\epsilon}\mu_d(n,\ell)$ because $\mu_d(n,\ell)\geq n$.
+Its expectation is at most $\epsilon M/2$ under the specified bias,
+whose inverse is $2^{O_{d,\epsilon}(n)}$.
+Construction and evaluation have the same exponential dependence on
+$n$, and
+\[
+ 2^{O_{d,\epsilon}(n)}
+ \leq(\mathrm e n/\ell)^{O_{d,\epsilon}(\ell)}
+\]
+because $n<100d\ell$ and $\log(\mathrm e n/\ell)\geq1$.
+Any case left by these two rules has $n<200d^2$ and is handled by
+the same scalar construction with constant overhead depending on
+$d,\epsilon$. This proves \Cref{hierarchy:signing}.
+
+For completeness, a scalar signing can also be found directly by
+conditional expectation of its even-moment potential. This procedure
+enumerates input assignments, and never enumerates $2^M$ sign vectors.
+Fix an input $x$, put $c_i=a_i\chi_{F_i}(x)$ and $p=2(n+1)$, and
+precompute the suffix moments
+\[
+ H_j(r)=\E\left(\sum_{i=j}^M c_i\xi_i\right)^r,
+ \qquad 0\leq r\leq p,
+\]
+where the $\xi_i$ are independent uniform signs. Initialize
+$H_{M+1}(0)=1$ and $H_{M+1}(r)=0$ for $r>0$, and use
+\begin{equation}\label{hierarchy:moment-recurrence}
+ H_j(r)=\sum_{\substack{0\leq h\leq r\\h\ \mathrm{even}}}
+         \binom rh c_j^h H_{j+1}(r-h).
+\end{equation}
+If the chosen prefix contributes $z$ at $x$, fixing the next sign to
+$b_j=\pm1$ gives conditional $p$th moment
+\[
+ \sum_{r=0}^p\binom pr(z\pm c_j)^{p-r}H_{j+1}(r).
+\]
+Sum these expressions over all inputs with the normalization in
+\Cref{lem:scalar}, and choose a sign whose conditional expectation
+does not exceed the current one. The uniform starting expectation
+supplies the desired certificate bound at termination.
+The recurrence and all conditional comparisons take
+$\poly(\text{input})2^{O(n)}$ bit operations. The same computation
+minimizes a sum of finitely many scalar certificates on common signs,
+since conditional expectations add.
+
+\subsection{The avoidance tradeoff}
+
+As in \Cref{sec:avoidance}, $n<k$ is handled by evaluating at most
+$2^k$ inputs, so assume $n\geq k$ and apply that section's Fourier
+reduction. If more than $n$
+outputs are signed parities, its linear-algebra branch finishes the
+problem. Otherwise, remove those outputs and retain $M\geq m-n$
+nonparity outputs. Their proper Fourier parts have degree at most
+$k-1$, with at most $J=2^k-1$ layers and Fourier gap
+$\delta=2^{1-k}$.
+
+For every layer of degree $2\leq d\leq k-1$, use
+\Cref{hierarchy:signing} with $\epsilon=\delta/(4J)$.
+Since $n/\ell\geq1$,
+\[
+ \mu_d(n,\ell)\leq\mu_{k-1}(n,\ell)
+ =n(n/\ell)^{(k-3)/2}.
+\]
+Degree-zero and degree-one layers use the exact certificates from
+\Cref{sec:avoidance}. Their expectations are bounded by
+$\sqrt M+\sqrt\eta M$ and $\sqrt{nM}+\sqrt\eta M$, respectively,
+so a sufficiently large constant multiple of $n$ and sufficiently
+small fixed bias give the same margin. Since
+$\mu_{k-1}(n,\ell)\geq n$, one constant $C_k$ absorbs these
+requirements and the discarded parity outputs.
+
+Choose a common full bias no larger than any layer requires and
+enumerate one explicit biased space. The sum of the certificates
+has expectation at most $\delta M/8$, so some enumerated vector
+has sum strictly below $\delta M$. The contradiction in
+\Cref{sec:avoidance} then proves that this vector, with arbitrary
+values in the discarded positions, is outside the range.
+There are only $O_k(1)$ layers; taking the smallest of their bias
+parameters and adding their construction and evaluation costs
+preserves Eqn.~\eqref{hierarchy:cost}. This is precisely
+Eqn.~\eqref{eq:hierarchy-time} under
+Eqn.~\eqref{eq:hierarchy-stretch}, proving
+\Cref{thm:hierarchy-avoid}.
+
+% End hierarchy
+
+
+% Begin applications
+\section{One-Sided Distinguishers and Data Structure Lower Bounds}
+\label{sec:applications}
+
+Finding one missing string need not distinguish a generator from uniform:
+the test that accepts just that string has acceptance probability $2^{-m}$.
+The expectation guarantee in \Cref{thm:signing} supplies the stronger
+conclusion needed here. We first retain that guarantee through the
+Fourier reduction and then apply it to cryptography and data structures.
+These applications follow the connections developed by Korten, Pitassi,
+and Impagliazzo~\cite{KPI25} and Guruswami, Lyu, and Yuan~\cite{GLY26}.
+All locality and accuracy parameters in this section are fixed.
+
+\subsection{A Dense, Efficiently Recognizable Subset of the Complement}
+
+\begin{theorem}[One-sided range test]\label{thm:onesided}
+For each fixed $k\ge3$, there are constants $C_k,B_k>0$ and a
+deterministic polynomial-time algorithm that, given an explicit
+$k$-local map $f:\{0,1\}^n\to\{0,1\}^m$ with
+$m\ge C_kn^{(k-1)/2}$, constructs a polynomial-size Boolean circuit
+$D_f:\{0,1\}^m\to\{0,1\}$ satisfying
+\begin{align}
+ D_f(f(x))&=0 &&\text{for every }x,\label{app:sound}\\
+ \Pr_{y\sim\U_m}[D_f(y)=1]&\ge\tfrac12.\label{app:uniform}
+\end{align}
+Moreover, for every fully $\eta$-biased distribution $\mathcal Q$ with
+$\eta\le(n+m+2)^{-B_k}$,
+\begin{equation}\label{app:biased}
+ \Pr_{y\sim\mathcal Q}[D_f(y)=1]\ge\tfrac13.
+\end{equation}
+The circuit $D_f$ is constructed without access to $\mathcal Q$.
+\end{theorem}
+
+\begin{proof}
+Assume first $n\ge k$. If there are more than $n$ signed-parity
+coordinates, find a nonempty binary dependency among them as in
+\Cref{sec:avoidance}. Let $D_f$ accept precisely when the corresponding
+output parity violates the identity obeyed by $f$. This proves
+Eqn.~\eqref{app:sound}. Its uniform acceptance probability is $1/2$;
+under $\mathcal Q$ it is at least $(1-\eta)/2$.
+
+Otherwise retain the $M\ge m-n$ nonparity coordinates. Use exactly the
+certificates constructed in \Cref{sec:avoidance}, and put
+\[
+ T_f(y)=\sum_{A\subsetneq[k]}\mathcal C_A(y),
+ \qquad \delta=2^{1-k}.
+\]
+Here and below each certificate reads only the retained coordinates
+of $y$. Every image point satisfies $T_f(f(x))\ge\delta M$, while
+Eqn.~\eqref{eq:joint-layer-budget} gives
+\[
+ \E_{\mathcal Q}T_f\le\delta M/8
+\]
+whenever the bias is small enough for every layer. Define
+$D_f(y)=\mathbf1\{T_f(y)<\delta M\}$. Soundness follows from the
+first inequality, and Markov's inequality gives acceptance probability
+at least $7/8$ under both uniform and sufficiently small-biased inputs.
+Construction, exact rational comparison, and Boolean circuit simulation
+of the evaluation algorithm have polynomial bit complexity.
+
+There is a single exponent $B_k$ that suffices for all instances.
+Indeed, their truth-table Fourier coefficients have $O_k(1)$ bit length,
+and the inverse biases in the fixed-parameter constructions are bounded
+by a polynomial in the explicit representation length
+$O_k(m\log(n+2)+\log(n+2))$. Increasing $B_k$ absorbs constants and
+ensures also $\eta\le1/3$.
+
+If $n<k$, enumerate the image and let $D_f$ recognize its complement.
+Uniform acceptance is at least $1-2^{n-m}\ge1/2$. For a fully biased
+distribution, the character expansion of a singleton gives
+$\mathcal Q(y)\le2^{-m}+\eta$. Thus
+$\mathcal Q(\Range(f))\le1/2+2^k\eta\le2/3$ after a further constant
+increase of $B_k$. This computation has polynomial cost at fixed $k$.
+\end{proof}
+
+In the nonparity branch the test can certify a constant Hamming gap.
+If $T_f(y)\le\delta M/2$, then
+\[
+ \sum_{i=1}^M y_i f_i(x)
+ \le(1-\delta)M+T_f(y)\le(1-\delta/2)M.
+\]
+Consequently every image differs from $y$ in at least $\delta M/4$
+retained positions. This event has probability at least $3/4$.
+There is no corresponding constant-distance assertion for the
+single-parity test in the other branch.
+
+\begin{corollary}[Any fixed coefficient]\label{cor:prefactor}
+Fix $k\ge4$ and rational $\rho>0$. The conclusions of
+\Cref{thm:onesided}, with constants depending on $k,\rho$, hold whenever
+$m>n$ and $m\ge\rho n^{(k-1)/2}$. Construction and evaluation take time
+\[
+ (n+m+2)^{O_k(1+\rho^{-2/(k-3)})}.
+\]
+\end{corollary}
+\begin{proof}
+Choose the constant level
+$\ell_0=\max\{1,\lceil(C_k/\rho)^{2/(k-3)}\rceil\}$ in
+\Cref{thm:hierarchy-avoid}. For $n\ge\ell_0$, its density requirement
+is at most $\rho n^{(k-1)/2}$. The hierarchy proof preserves the
+common-bias expectation guarantee before choosing a signing, so the
+proof of \Cref{thm:onesided} applies. For $n<\ell_0$, use exhaustive
+image evaluation and the same singleton bound, increasing the
+bias exponent by a constant depending on $k,\rho$.
+The time bound follows from $\ell_0=O_k(1+\rho^{-2/(k-3)})$.
+\end{proof}
+
+\subsection{Consequences for Local Demi-Bits and Goldreich Generators}
+
+We use the convention of Ren, Wang, and Zhong~\cite[Definition~2.1]{RWZ26}:
+an $(s,\varepsilon)$-secure demi-bits generator has no nondeterministic
+circuit of size at most $s$ that rejects its entire image and accepts
+at least an $\varepsilon$ fraction of uniform strings.
+
+\begin{corollary}[Breaking local demi-bits]\label{cor:demibits}
+For every fixed $k\ge3$, every polynomial-output-length family of
+$k$-local maps satisfying $m(n)\ge C_kn^{(k-1)/2}$ admits
+polynomial-size deterministic distinguishers that reject the entire
+image and accept at least half of all uniform strings. In particular,
+such a family is not secure as a demi-bits generator against
+$\NP/\poly$. For $k\ge4$, the same conclusion holds with any fixed
+positive coefficient in place of $C_k$, provided $m>n$.
+\end{corollary}
+\begin{proof}
+Apply \Cref{thm:onesided,cor:prefactor}. A deterministic circuit is
+a special case of a nondeterministic circuit. For a nonuniform
+generator family, hardwire its polynomial-length local description
+and the constructed test. If the local descriptions are uniformly
+computable, the adversary is uniform as well.
+\end{proof}
+
+The attack is one-sided and therefore also distinguishes the output
+distribution of an ordinary local pseudorandom generator from uniform.
+If $m\ge rC_kn^{(k-1)/2}$, apply the test to $r$ disjoint output
+blocks and accept when any test accepts. Uniform blocks are independent,
+so this raises the acceptance probability to at least $1-2^{-r}$;
+every image point is still rejected. No independence among generator
+outputs is used.
+
+For Goldreich's generator, the predicate and the ordered support
+hypergraph may be arbitrary. For fixed locality $k\ge4$, a family
+with output length $m=n^c$ is therefore excluded as a secure
+demi-bits generator whenever $c\ge(k-1)/2$. In particular, for
+the five-variable predicate
+\[
+ P(x)=x_1+x_2+x_3+x_4x_5\quad\text{over }\F_2,
+\]
+the conclusion applies at $m=\rho n^2$ for every fixed $\rho>0$.
+This predicate is discussed as a candidate in~\cite[Appendix~B.3]{RWZ26}.
+The result does not exclude its instantiation at $m=n^{1+\varepsilon}$
+for $0<\varepsilon<1$. At locality three, the conclusion requires a
+sufficiently large linear-stretch constant, not every $m>n$ or every
+specified constant multiple of $n$.
+
+Constant degree over $\F_2$ is different from constant locality.
+For example, a quadratic output may involve all input variables.
+Accordingly, \Cref{cor:demibits} does not refute the general
+constant-degree demi-bits assumption in~\cite[Assumption~2.3]{RWZ26}.
+It restricts its local candidate instantiations in the parameter
+range just stated. Li, Ren, and Zhong~\cite[Corollary~4.6]{LRZ26}
+already deduce a nondeterministic demi-bits attack at the GLY
+threshold. Our endpoint removes its logarithmic loss, and
+\Cref{thm:onesided} supplies a deterministic one-sided test directly.
+
+\paragraph{The projection barrier to further improvements.}
+Li, Ren, and Zhong~\cite[Corollary~4.5]{LRZ26} show that, for a
+universal constant $c$, a secure $k$-local demi-bits generator of
+output length $c s(n)$ rules out even an errorless nondeterministic
+polynomial-time solver for $k$-local AVOID at output length $s(n)>n$.
+Thus the existence of secure local demi-bits at a smaller stretch
+would obstruct a corresponding improvement of our algorithm.
+This is a conditional barrier, not an unconditional optimality
+claim for the exponent $(k-1)/2$.
+
+\paragraph{Proof complexity.}
+There is also a direct consequence at the level of general
+propositional proof systems. For each fixed $k$, extend a standard
+complete proof system by a rule that accepts a range-exclusion
+tautology for $(f,y)$ when the promise of \Cref{thm:onesided} holds
+and $D_f(y)=1$. The rule is sound and polynomial-time checkable.
+It gives polynomial-size proofs for at least half of the strings
+$y$ at the stated stretch. This defines a Cook--Reckhow proof system;
+it is not a claim of short proofs in Resolution, Polynomial Calculus,
+or a fixed-degree sum-of-squares system. Establishing any such claim
+requires a separate simulation of the certificate construction.
+
+The projection argument of Li, Ren, and
+Zhong~\cite[Theorem~3.2 and Section~4]{LRZ26} strengthens the
+uniform-output guarantee. We record its quantitative consequence;
+the amplification mechanism is theirs.
+
+\begin{corollary}[Short certificates for almost all candidate outputs]
+\label{cor:projection-proofs}
+Fix $k\ge3$, and let $s,m$ be integers with
+\[
+ n<s\le m,\qquad s\ge C_kn^{(k-1)/2}.
+\]
+There is a polynomial-time verifier $V_k(f,y,I)$, uniform in the
+local description of $f:\{0,1\}^n\to\{0,1\}^m$, whose witness
+$I$ is an $s$-element subset of $[m]$, such that
+\begin{enumerate}
+ \item $V_k(f,y,I)=1$ implies $y\notin\operatorname{Range}(f)$;
+ \item the number of strings having no accepting witness is at most
+ \begin{equation}\label{app:projection-exceptions}
+  \sum_{j=0}^{s-1}\binom{m}{j}.
+ \end{equation}
+\end{enumerate}
+In particular, if $m\ge4s$, the verifier accepts, for some witness,
+at least a $1-2^{-\gamma m}$ fraction of uniform strings, where
+$\gamma=1-h_2(1/4)>0$ and
+$h_2(u)=-u\log_2u-(1-u)\log_2(1-u)$.
+For each fixed $k$, one Cook--Reckhow proof system gives
+polynomial-size proofs of the corresponding range-exclusion
+tautologies for all these accepted strings.
+\end{corollary}
+\begin{proof}
+Let $A_k$ be the deterministic algorithm of \Cref{thm:avoid}.
+The verifier first rejects malformed local descriptions and witnesses
+that violate the stated length and density conditions.
+Given $I$, form the projected map $f|_I$ in increasing coordinate
+order, compute $z_I=A_k(f|_I)$, and accept precisely when
+$y|_I=z_I$. Projection preserves locality and the density promise
+holds at output length $s$. Thus $z_I$ is outside the range of
+$f|_I$, proving soundness. An $m$-bit incidence vector encodes $I$,
+and verification takes polynomial time for fixed $k$.
+
+Let $U$ be the set of strings with no accepting witness. For every
+$s$-element set $I$, the projection $U|_I$ omits $z_I$.
+Consequently $U$ shatters no set of $s$ coordinates. The
+Sauer--Shelah bound, recalled in~\cite[Lemma~2.10]{LRZ26}, gives
+Eqn.~\eqref{app:projection-exceptions}. If $s\le m/4$, the
+binomial entropy bound gives
+\[
+ 2^{-m}|U|
+ \le 2^{-m}\sum_{j=0}^{s-1}\binom{m}{j}
+ \le 2^{-m(1-h_2(1/4))}.
+\]
+Finally, extend a fixed complete Cook--Reckhow system by a proof
+format containing $(f,y,I)$, checked by $V_k$, and producing the
+canonical range-exclusion tautology for $(f,y)$. The verifier is
+sound and polynomial-time, and the base system preserves
+completeness. Its proof lengths are polynomial in the local
+description and output length.
+\end{proof}
+
+More generally, $s\le\beta m$ for fixed $0<\beta<1/2$ gives
+exceptional fraction at most $2^{-(1-h_2(\beta))m}$.
+At $s=\lceil C_kn^{(k-1)/2}\rceil$, increasing $C_k$ if needed
+to ensure $s>n$, the condition $m\ge4s$ changes only the constant
+in the main stretch bound. This conclusion uses the AVOID
+algorithm alone. Finding a witness $I$ for a given $y$ is not
+shown to be deterministic polynomial time, and the exponentially
+small exceptional fraction is asserted for uniform $y$, not for
+every small-biased distribution. The deterministic test and
+small-bias guarantee of \Cref{thm:onesided} remain separate inputs
+to the data structure applications. Likewise, the proof system
+constructed here does not imply short proofs in an independently
+specified weak system. Transferring the result to such a system
+requires short proofs for the projected instances and a suitable
+closure under adding axioms; see~\cite[Section~4.3]{LRZ26}.
+
+These are average-case guarantees over candidate outputs of each fixed
+map. They do not constitute a worst-case-to-average-case reduction
+over a fixed distribution of circuit instances. The conditional
+average-case hardness result in~\cite[Theorem~4.4]{LRZ26} instead
+starts from a demi-bits generator and samples its output projections.
+
+\subsection{Universal Families and Nonadaptive Bit Probes}
+
+\begin{corollary}[An oblivious family of candidate nonoutputs]
+\label{cor:universal}
+For fixed $k\ge3$ and lengths $n,m$ satisfying the density promise,
+there is an explicitly enumerable multiset $\mathcal H_{n,m}$ of
+$(n+m)^{O_k(1)}$ strings such that, for every $k$-local map
+$f:\{0,1\}^n\to\{0,1\}^m$, at least one third of the elements of
+$\mathcal H_{n,m}$, counted with multiplicity, are accepted by $D_f$.
+The multiset is chosen before $f$ is specified.
+\end{corollary}
+\begin{proof}
+Use \Cref{lem:small-bias} with $h=m$ and
+$\eta=(n+m+2)^{-B_k}$, and apply Eqn.~\eqref{app:biased}.
+\end{proof}
+
+The quantifiers are
+$\exists\mathcal H\ \forall f\ \exists y\in\mathcal H$,
+not $\exists y\ \forall f$. They are exactly what the data structure
+application needs. A fixed query algorithm must represent every row
+of the query problem, although each row has its own memory encoding.
+
+A static query problem is a Boolean matrix $F:[R]\times[m]\to\{0,1\}$.
+An encoding assigns each row a memory string of $S$ bits. A nonadaptive
+$t$-probe query algorithm reads at most $t$ memory locations, determined
+by the query index, and returns the requested entry. No computational
+bound is placed on encoding or decoding.
+
+\begin{lemma}[Strongly explicit rows]\label{lem:explicit-rows}
+For every fixed integer $B\ge1$ and $m\ge1$, a fully
+$(3m+3)^{-B}$-biased distribution on $m$ bits can be indexed by
+$O_B(\log(m+2))$ uniform seed bits. Any specified output coordinate
+is computable deterministically in time $\poly_B(\log(m+2))$ from
+the seed, the coordinate index, and $m$.
+\end{lemma}
+\begin{proof}
+Put $\eta=(3m+3)^{-B}$ and choose $r$ to be the least power of two
+at least $\lceil\log_2\max\{2,m/\eta\}\rceil$. Use the construction
+in \Cref{lem:small-bias} over $\F_{2^r}$, indexed by
+$(a,z)\in\F_{2^r}^2$. Its bias is at most $(m-1)/2^r\le\eta$,
+and the seed length is $2r=O_B(\log(m+2))$.
+
+For completeness, this field has a deterministic quadratic-tower
+construction of cost polynomial in $r$. Begin with $K=\F_2$ and
+$c=1$, whose absolute trace is one. Replace $K$ by
+$K[u]/(u^2+u+c)$. The polynomial is irreducible because
+$\operatorname{Tr}_{K/\F_2}(c)=1$: the image of $v\mapsto v^2+v$
+is exactly the trace-zero subspace. In the new field, $cu$ has
+absolute trace one, since its relative trace to $K$ is $c$.
+Use $cu$ in the next extension. Repeating until dimension $r$
+gives arithmetic in a specified binary basis in time polynomial
+in $r$. Computing $z^{j-1}$ and its trace then has cost polynomial
+in $r+\log m$. This avoids any need for an exponential search for
+an irreducible polynomial when evaluating a query.
+\end{proof}
+
+\begin{theorem}[Logarithm-free nonadaptive space bound]
+\label{thm:bitprobe}
+For every fixed $t\ge3$, there is $B_t>0$ such that the following holds.
+Let the rows of $F:[R]\times[m]\to\{0,1\}$ support a fully
+$(3m+3)^{-B_t}$-biased distribution. Every exact nonadaptive
+$t$-bit-probe representation of $F$ requires
+\begin{equation}\label{app:bitprobe}
+ S\ge c_t m^{2/(t-1)}
+\end{equation}
+for a constant $c_t>0$. There are explicit such matrices with
+$R=m^{O_t(1)}$ and entries computable in time $\poly_t(\log(m+2))$.
+\end{theorem}
+\begin{proof}
+If $S\ge m$, Eqn.~\eqref{app:bitprobe} is immediate after taking
+$c_t\le1$. Otherwise a fixed decoder induces the $t$-local map
+\[
+ C:\{0,1\}^S\longrightarrow\{0,1\}^m,
+ \qquad C(z)_j=\text{the answer to query }j\text{ on memory }z.
+\]
+Correctness for every row implies
+$\supp(\mathcal Q)\subseteq\Range(C)$. If
+$m\ge C_tS^{(t-1)/2}$, \Cref{thm:onesided} contradicts this
+containment: the chosen bias is at most $(S+m+2)^{-B_t}$ and
+the test accepts a positive fraction of $\mathcal Q$ outside the range.
+Hence $m<C_tS^{(t-1)/2}$, which gives the bound. Zero-bit memories
+are impossible for a distribution with bias less than one.
+
+For explicitness, use \Cref{lem:explicit-rows} on $m$ bits at
+the stated bias. Its sample points are the rows, with multiplicity.
+The seed length is $O_t(\log(m+2))$ and its coordinate evaluation
+has the asserted running time.
+\end{proof}
+
+In particular, $t=3$ gives $S=\Omega(m)$, while $t=4$ gives
+$S=\Omega(m^{2/3})$ and $t=5$ gives $S=\Omega(m^{1/2})$.
+The row index has only $O_t(\log m)$ bits. The three-probe statement
+is therefore an explicit linear-space lower bound for a problem
+whose data can be specified with logarithmically many bits.
+The earlier reduction in~\cite[Theorem~10]{GLY26} gives the same
+power with a logarithmic loss. Our statement removes that loss for
+a sufficiently small polynomial bias; we do not preserve their
+specific bias exponent.
+
+\subsection{Adaptive Queries and Constant-Size Words}
+
+We give a separate consequence for adaptive cell probes. It uses the
+full degree-$t$ expansion, rather than treating a depth-$t$ decision
+tree as a junta on $2^t-1$ bits. This distinction avoids an exponential
+loss in the exponent of the storage bound.
+
+\begin{theorem}[Remote points for bounded-depth word queries]
+\label{thm:wordremote}
+Fix integers $t\ge2,w\ge1$ and rational $0<\varepsilon<1/2$.
+There are constants $C,B>0$ depending on these parameters such that,
+for integers $S,m\ge1$, if each coordinate of
+$f:(\{0,1\}^w)^S\to\{\pm1\}^m$ is computed by an adaptive
+decision tree making at most $t$ word queries and
+$m\ge CS^{t/2}$, a deterministic polynomial-time test certifies
+\[
+ \min_z\Delta(f(z),y)\ge\tfrac12-\varepsilon
+\]
+with probability at least $3/4$ under every fully
+$(S+m+2)^{-B}$-biased distribution on $y$.
+The test takes the explicit query trees as input and never certifies
+a false assertion.
+\end{theorem}
+\begin{proof}
+For every cell $v$ and nonzero $a\in\F_2^w$, introduce the formal
+sign variable $X_{v,a}=(-1)^{\langle a,z_v\rangle}$.
+There are $N=(2^w-1)S$ such features. Delete repeated queries to an
+already known cell along any path of a decision tree. The indicator
+of a leaf is a product of at most $t$ word-value indicators, and
+\[
+ \mathbf1\{z_v=c\}=2^{-w}
+       \sum_{a\in\F_2^w}(-1)^{\langle a,c\rangle}X_{v,a},
+ \qquad X_{v,0}=1.
+\]
+The resulting Fourier expansion has degree at most $t$ in the
+formal features and at most $J=2^{2wt}$ nonzero monomials per output.
+After collecting terms, every coefficient has magnitude at most one:
+these are Fourier coefficients of a Boolean function on the original
+independent uniform cells. Each monomial uses at most one feature
+from any cell.
+
+Order the monomials separately by degree in each output, pad lists
+with zero coefficients, and form at most $(t+1)J$ systems, with one
+original label per output in every system. For degrees at least two,
+apply \Cref{thm:signing} on the $N$ formal variables. Treating the
+features as independent enlarges the domain and hence preserves
+the upper-bound direction. Degrees zero and one use
+\Cref{lem:elementary-degrees}. Pad the formal variable set to size
+at least $t$ if necessary; this changes only fixed constants.
+
+Choose each accuracy parameter as
+$\varepsilon/((t+1)J)$. The density hypothesis, with sufficiently
+large $C$, satisfies every layer's requirement. Their sum $T(y)$
+is nonnegative, efficiently evaluable, and obeys
+\[
+ \sup_z\left|\sum_i y_if_i(z)\right|\le T(y),
+ \qquad \E T\le\varepsilon m/2.
+\]
+All inverse biases are uniformly polynomial in $S+m$ for fixed
+$t,w,\varepsilon$. Markov's inequality gives
+$T(y)\le2\varepsilon m$ with probability at least $3/4$.
+The identity
+$\Delta(f(z),y)=(1-m^{-1}\sum_i y_if_i(z))/2$
+completes the proof.
+\end{proof}
+
+\begin{corollary}[Adaptive constant-word space bound]
+\label{cor:wordprobe}
+For fixed $t\ge2,w\ge1$, there is an explicit query problem with
+$m^{O_{t,w}(1)}$ rows such that every exact adaptive $t$-probe
+representation using $w$-bit cells requires
+\[
+ S=\Omega_{t,w}(m^{2/t}).
+\]
+The same bound holds if each row need only be represented within
+relative Hamming error $1/4$.
+\end{corollary}
+\begin{proof}
+Take $\varepsilon=1/8$ in \Cref{thm:wordremote} and choose a common
+bias $(3m+3)^{-B}$ for all $S<m$. Use \Cref{lem:explicit-rows}.
+Its explicit small-biased rows
+cannot all lie within distance $1/4$ of the decoder's range,
+because a positive fraction have distance at least $3/8$.
+The case $S\ge m$ is immediate. A zero-cell decoder is constant;
+its average distance from a small-biased row is at least
+$(1-\eta)/2>1/4$, so it cannot provide the stated approximation.
+\end{proof}
+
+The word size is fixed: this corollary makes no assertion of uniform
+dependence on a growing $w=\Theta(\log m)$. Also, when $w=1$, the
+specialized adaptive bit-probe analysis of~\cite[Section~5.2]{GLY26}
+has stronger powers of $m$ than $2/t$. Thus \Cref{cor:wordprobe}
+is a logarithm-free baseline and a robust approximation statement,
+not a replacement for those stronger adaptive bit-probe results.
+All data structure assertions above concern exact deterministic
+decoding, or the explicitly stated per-row Hamming approximation;
+bounded-error randomized decoding requires a separate argument.
+
+\section{What the Sharp Moore Bound Supplies Directly}
+\label{sec:moore-applications}
+
+The sharp density scale in our construction comes from the recent
+proofs of the hypergraph Moore bound~\cite{BKNPW26,SH26Moore}.
+Bandeira et al.~\cite[Theorem~1.2, version~2]{BKNPW26} prove that,
+for every fixed uniformity $d\ge3$, density
+$M\ge c_d n(n/\ell)^{d/2-1}$ forces an even cover of size
+at most $C_d\ell\log n$. Their second version
+covers odd as well as even $d$.
+Schmidhuber and Hastings additionally state the
+refined cover-length bound $O(\ell\log(en/\ell))$ with absolute
+constants. Their random-instance companion~\cite{SH26Kikuchi}
+does not by itself supply our arbitrary-support, common-sign
+certificate theorem. This section records a direct consequence of
+the extremal result and separates it from the constructive work.
+
+\begin{proposition}[Many disjoint short dependencies]
+\label{prop:moore-packing}
+Fix $d\ge3$ and $1\le\ell\le n$. There are constants $A,C>0$
+such that every labeled $d$-uniform hypergraph with
+\[
+ M\ge2R,\qquad
+ R=\left\lceil Cn(n/\ell)^{d/2-1}\right\rceil
+\]
+has a collection of pairwise label-disjoint nonempty even covers,
+each of size at most
+$L=\max\{2,\lceil A\ell\log(en/\ell)\rceil\}$,
+whose union contains at least $M/2$ labels.
+\end{proposition}
+\begin{proof}
+While at least $R$ labels remain, find an even cover and delete it.
+Two repeated supports immediately give a cover of size two;
+otherwise apply the sharp Moore bound to the simple residual
+hypergraph. Choose $C$ large enough for its strict density
+inequality. Fewer than $R$ labels remain at termination, so at
+least $M/2$ have been removed.
+\end{proof}
+
+\begin{corollary}[A weak refutation margin from short covers]
+\label{cor:moore-weak}
+Under the hypotheses of \Cref{prop:moore-packing}, consider the
+signed equations $\chi_{F_i}(x)=b_i$. Under every fully
+$\eta$-biased distribution on the $M$ labels, with probability
+at least $1-8L/M-4\eta$, every assignment violates at least
+$M/(8L)$ equations. Equivalently, the maximum normalized
+correlation is at most $1-1/(4L)$.
+\end{corollary}
+\begin{proof}
+Fix the packing before drawing the signs, and let it have $q$ covers
+$E_1,\ldots,E_q$. Since their union has at least $M/2$ labels,
+$q\ge M/(2L)$. Put $Z_j=\prod_{i\in E_j}b_i$. Every $Z_j=-1$
+certifies an inconsistent subsystem: multiplying its equations
+has left-hand side one. The covers are label-disjoint, so every
+$Z_jZ_h$ with $j\ne h$ is a nonempty parity. Therefore
+\[
+ \E\left(\sum_{j=1}^q Z_j\right)^2
+ \le q+\eta q(q-1).
+\]
+Markov's inequality bounds the probability that
+$\sum_jZ_j>q/2$ by $4/q+4\eta\le8L/M+4\eta$.
+On the complementary event, at least $q/4$ covers are inconsistent.
+Each forces a violation on a different label, proving the claim.
+\end{proof}
+
+The covers provide polynomial-size verifiable witnesses even when
+this existence proof does not find them in polynomial time at a
+growing level. The weak margin is $\Theta(1/L)$, not a fixed
+constant. Passing from these witnesses to efficiently constructed
+strong cancellation for arbitrary supports is precisely why the
+memory extraction, pair equalization, and forest decomposition in
+the preceding sections are needed. Neither the short-cover theorem
+alone nor the present fixed-accuracy analysis proves a smaller
+polynomial-time stretch exponent or automatically removes every
+logarithmic factor from the specialized adaptive-query bounds.
+
+% End applications
+
+
+\section*{Acknowledgments}
+This draft was prepared during the author's visit to the Simons Institute
+for the Theory of Computing for the program Pseudorandomness and
+High-Dimensional Expansion. The author thanks the institute for its
+hospitality.
+
+\paragraph{AI Disclosure.}
+ChatGPT/Codex was used extensively in developing the arguments, checking
+proof details, reviewing the literature, and preparing this draft.
+Computational checks of the forest and memory-extraction components
+supplement the mathematical arguments. These checks do not implement
+the full asymptotic algorithm, and no formal verification is claimed.
+
+\newcommand{\etalchar}[1]{$^{#1}$}
+\begin{thebibliography}{BKNN{\etalchar{+}}26}
+
+\bibitem[AGHP92]{AGHP92}
+Noga Alon, Oded Goldreich, Johan H{\aa}stad, and Ren{\'e} Peralta.
+\newblock Simple construction of almost {$k$}-wise independent random
+  variables.
+\newblock {\em Random Structures \& Algorithms}, 3(3):289--304, 1992.
+
+\bibitem[BKNN{\etalchar{+}}26]{BKNPW26}
+Afonso~S. Bandeira, Dmitriy Kunisky, Petar Nizi{\'c}-Nikolac, Lucas Pesenti,
+  and Robert Wang.
+\newblock The hypergraph {Moore} bound.
+\newblock {\em CoRR}, abs/2607.14068, 2026.
+\newblock arXiv version 2.
+
+\bibitem[GGNS23]{GGNS23}
+Karthik Gajulapalli, Alexander Golovnev, Satyajeet Nagargoje, and Sidhant
+  Saraogi.
+\newblock Range avoidance for constant depth circuits: Hardness and algorithms.
+\newblock In {\em APPROX/RANDOM 2023}, volume 275 of {\em Leibniz International
+  Proceedings in Informatics (LIPIcs)}, pages 65:1--65:18. Schloss
+  Dagstuhl--Leibniz-Zentrum f\"ur Informatik, 2023.
+
+\bibitem[GKM22]{GKM22}
+Venkatesan Guruswami, Pravesh~K. Kothari, and Peter Manohar.
+\newblock Algorithms and certificates for {Boolean CSP} refutation: Smoothed is
+  no harder than random.
+\newblock In {\em 54th Annual ACM SIGACT Symposium on Theory of Computing (STOC
+  2022)}, pages 678--689. Association for Computing Machinery, 2022.
+
+\bibitem[GLW22]{GLW22}
+Venkatesan Guruswami, Xin Lyu, and Xiuhan Wang.
+\newblock Range avoidance for low-depth circuits and connections to
+  pseudorandomness.
+\newblock In {\em APPROX/RANDOM 2022}, volume 245 of {\em Leibniz International
+  Proceedings in Informatics (LIPIcs)}, pages 20:1--20:21. Schloss
+  Dagstuhl--Leibniz-Zentrum f\"ur Informatik, 2022.
+
+\bibitem[GLY25]{GLY26}
+Venkatesan Guruswami, Xin Lyu, and Weiqiang Yuan.
+\newblock Cell-probe lower bounds via semi-random {CSP} refutation: Simplified
+  and the odd-locality case.
+\newblock {\em CoRR}, abs/2507.22265, 2025.
+\newblock arXiv version 1.
+
+\bibitem[HKM23]{HKM23}
+Jun-Ting Hsieh, Pravesh~K. Kothari, and Sidhanth Mohanty.
+\newblock A simple and sharper proof of the hypergraph {Moore} bound.
+\newblock In {\em 2023 Annual ACM-SIAM Symposium on Discrete Algorithms
+  (SODA)}, pages 2324--2344. Society for Industrial and Applied Mathematics,
+  2023.
+
+\bibitem[KPI25]{KPI25}
+Oliver Korten, Toniann Pitassi, and Russell Impagliazzo.
+\newblock Stronger cell probe lower bounds via local {PRGs}.
+\newblock {\em Electronic Colloquium on Computational Complexity}, TR25-030,
+  2025.
+
+\bibitem[LRZ26]{LRZ26}
+Xin Li, Hanlin Ren, and Yan Zhong.
+\newblock Many proof complexity generators inside one demi-bits generator.
+\newblock {\em CoRR}, abs/2609.23228, 2026.
+\newblock arXiv version 1; also ECCC TR26-196.
+
+\bibitem[NN93]{NN93}
+Joseph Naor and Moni Naor.
+\newblock Small-bias probability spaces: Efficient constructions and
+  applications.
+\newblock {\em SIAM Journal on Computing}, 22(4):838--856, 1993.
+
+\bibitem[RWZ26]{RWZ26}
+Hanlin Ren, Yichuan Wang, and Yan Zhong.
+\newblock Hardness of range avoidance and proof complexity generators from
+  demi-bits.
+\newblock {\em CoRR}, abs/2511.14061, 2026.
+\newblock arXiv version 2.
+
+\bibitem[SH26a]{SH26Kikuchi}
+Alexander Schmidhuber and Matthew~B. Hastings.
+\newblock The {Kikuchi} hierarchy is sharp for {$k$XOR}.
+\newblock {\em CoRR}, abs/2607.29672, 2026.
+\newblock arXiv version 1.
+
+\bibitem[SH26b]{SH26Moore}
+Alexander Schmidhuber and Matthew~B. Hastings.
+\newblock A spectral proof of the hypergraph {Moore} bound.
+\newblock {\em CoRR}, abs/2607.26028, 2026.
+\newblock arXiv version 1.
+
+\end{thebibliography}
+
+\end{document}
